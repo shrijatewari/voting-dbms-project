@@ -13,11 +13,13 @@ class VoterService {
 
         // Check for duplicate email (only if email is provided and not empty)
         const normalizedEmail = voterData.email ? voterData.email.toLowerCase().trim() : null;
-        if (normalizedEmail && normalizedEmail.length > 0) {
+        if (normalizedEmail && normalizedEmail.length > 0 && normalizedEmail !== 'null' && normalizedEmail !== 'undefined') {
+          console.log('Checking duplicate email:', normalizedEmail);
           const [existingEmail] = await connection.query(
-            'SELECT voter_id, name, aadhaar_number FROM voters WHERE email = ? AND email IS NOT NULL AND email != "" LIMIT 1',
+            'SELECT voter_id, name, aadhaar_number FROM voters WHERE email = ? AND email IS NOT NULL AND email != "" AND email != "null" LIMIT 1',
             [normalizedEmail]
           );
+          console.log('Email check result:', existingEmail.length, existingEmail);
           if (existingEmail.length > 0) {
             await connection.rollback();
             connection.release();
@@ -27,11 +29,13 @@ class VoterService {
 
         // Check for duplicate mobile (only if mobile is provided and not empty)
         const normalizedMobile = voterData.mobile_number ? voterData.mobile_number.trim() : null;
-        if (normalizedMobile && normalizedMobile.length > 0) {
+        if (normalizedMobile && normalizedMobile.length > 0 && normalizedMobile !== 'null' && normalizedMobile !== 'undefined') {
+          console.log('Checking duplicate mobile:', normalizedMobile);
           const [existingMobile] = await connection.query(
-            'SELECT voter_id, name, aadhaar_number FROM voters WHERE mobile_number = ? AND mobile_number IS NOT NULL AND mobile_number != "" LIMIT 1',
+            'SELECT voter_id, name, aadhaar_number FROM voters WHERE mobile_number = ? AND mobile_number IS NOT NULL AND mobile_number != "" AND mobile_number != "null" LIMIT 1',
             [normalizedMobile]
           );
+          console.log('Mobile check result:', existingMobile.length, existingMobile);
           if (existingMobile.length > 0) {
             await connection.rollback();
             connection.release();
@@ -42,10 +46,12 @@ class VoterService {
         // Check for duplicate Aadhaar (Aadhaar is always required, so always check)
         if (voterData.aadhaar_number && voterData.aadhaar_number.trim().length > 0) {
           const normalizedAadhaar = voterData.aadhaar_number.trim();
+          console.log('Checking duplicate Aadhaar:', normalizedAadhaar);
           const [existingAadhaar] = await connection.query(
             'SELECT voter_id, name, email, mobile_number FROM voters WHERE aadhaar_number = ? LIMIT 1',
             [normalizedAadhaar]
           );
+          console.log('Aadhaar check result:', existingAadhaar.length, existingAadhaar);
           if (existingAadhaar.length > 0) {
             await connection.rollback();
             connection.release();

@@ -4,6 +4,12 @@ const { validateVoterRegistration } = require('../middleware/voterValidation');
 class VoterController {
   async createVoter(req, res, next) {
     try {
+      console.log('Creating voter with data:', {
+        email: req.body.email,
+        mobile: req.body.mobile_number,
+        aadhaar: req.body.aadhaar_number ? req.body.aadhaar_number.substring(0, 4) + '****' : 'missing'
+      });
+      
       // Validation is done by middleware, but double-check essential fields
       const voter = await voterService.createVoter(req.body);
       res.status(201).json({ 
@@ -12,8 +18,10 @@ class VoterController {
         message: 'Voter registered successfully. Please verify your email and mobile number with OTP.'
       });
     } catch (error) {
+      console.error('Voter creation error:', error.message);
+      
       // Handle duplicate errors specifically
-      if (error.message.includes('already registered')) {
+      if (error.message.includes('already registered') || error.message.includes('Duplicate')) {
         return res.status(409).json({
           error: 'Duplicate registration detected',
           message: error.message,
