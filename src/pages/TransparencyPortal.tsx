@@ -9,11 +9,24 @@ export default function TransparencyPortal() {
 
   const loadMerkleRoot = async () => {
     setLoading(true);
+    setError('');
     try {
       const result = await transparencyService.getMerkleRoot(date);
-      setMerkleRoot(result.data);
+      if (result.data?.success && result.data?.data) {
+        setMerkleRoot(result.data.data);
+        setError('');
+      } else if (result.data) {
+        setMerkleRoot(result.data);
+        setError('');
+      } else {
+        setError(result.data?.message || 'Merkle root not found for this date');
+        setMerkleRoot(null);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to load merkle root');
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load merkle root';
+      setError(errorMsg);
+      setMerkleRoot(null);
+      console.error('Load merkle root error:', err);
     } finally {
       setLoading(false);
     }
@@ -70,29 +83,39 @@ export default function TransparencyPortal() {
           </div>
 
           {/* Merkle Root Display */}
-          {merkleRoot && (
+          {merkleRoot && merkleRoot.merkle_root ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Merkle Root for {date}</h2>
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Root Hash</p>
-                  <p className="text-sm font-mono text-gray-900 break-all">{merkleRoot.merkle_root || 'N/A'}</p>
+                  <p className="text-sm font-mono text-gray-900 break-all">{merkleRoot.merkle_root}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Records</p>
                   <p className="text-lg font-semibold text-gray-900">{merkleRoot.total_records || 0}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Hash Valid</p>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    merkleRoot.hash_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {merkleRoot.hash_valid ? 'Valid' : 'Invalid'}
-                  </span>
-                </div>
+                {merkleRoot.signature && (
+                  <div>
+                    <p className="text-sm text-gray-600">Signature</p>
+                    <p className="text-xs font-mono text-gray-700 break-all">{merkleRoot.signature.substring(0, 32)}...</p>
+                  </div>
+                )}
+                {merkleRoot.published_at && (
+                  <div>
+                    <p className="text-sm text-gray-600">Published At</p>
+                    <p className="text-sm text-gray-900">{new Date(merkleRoot.published_at).toLocaleString()}</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          ) : error && error.includes('not found') ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <p className="text-yellow-800">
+                {error}. {merkleRoot?.message || 'Try generating a Merkle root for this date or select a different date.'}
+              </p>
+            </div>
+          ) : null}
 
           {/* Export Section */}
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">

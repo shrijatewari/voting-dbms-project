@@ -14,10 +14,21 @@ class TransparencyController {
   async getMerkleRoot(req, res, next) {
     try {
       const date = req.query.date || new Date().toISOString().split('T')[0];
-      const root = await transparencyService.getMerkleRoot(date);
+      
+      // Try to get existing root
+      let root = await transparencyService.getMerkleRoot(date);
+      
+      // If not found, generate it automatically
       if (!root) {
-        return res.status(404).json({ error: 'Merkle root not found for this date' });
+        root = await transparencyService.generateMerkleRoot(date);
+        if (!root || !root.merkle_root) {
+          return res.status(404).json({ 
+            error: 'Merkle root not found for this date',
+            message: root?.message || 'No audit logs found for this date to generate Merkle root'
+          });
+        }
       }
+      
       res.json({ success: true, data: root });
     } catch (error) {
       next(error);
