@@ -48,8 +48,7 @@ class VoterService {
         : crypto.randomBytes(32).toString('hex');
       
       // Build dynamic query with mandatory fields
-      // Normalize email to lowercase and capitalize gender
-      const normalizedEmail = voterData.email ? voterData.email.toLowerCase().trim() : null;
+      // normalizedEmail already declared above, just normalize gender
       const normalizedGender = voterData.gender ? 
         voterData.gender.charAt(0).toUpperCase() + voterData.gender.slice(1).toLowerCase() : null;
       

@@ -589,13 +589,6 @@ export default function VoterRegistration() {
     );
   }
 
-  const { t } = useTranslation();
-
-  // Add error boundary check
-  if (!t) {
-    console.error('Translation function not available');
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
       <div className="max-w-4xl mx-auto">
