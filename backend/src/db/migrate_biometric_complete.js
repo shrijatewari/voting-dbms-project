@@ -67,8 +67,8 @@ async function migrateBiometricComplete() {
     // Add biometric fields to voters table if not exists
     console.log('🔧 Adding biometric fields to voters table...');
     const biometricVoterFields = [
-      { name: 'face_embedding_hash', type: 'VARCHAR(255) DEFAULT NULL' },
-      { name: 'fingerprint_hash', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'face_embedding_hash', type: 'VARCHAR(255) NULL DEFAULT NULL' },
+      { name: 'fingerprint_hash', type: 'VARCHAR(255) NULL DEFAULT NULL' },
       { name: 'biometric_verified_at', type: 'TIMESTAMP NULL DEFAULT NULL' },
     ];
 

@@ -55,6 +55,10 @@ class VoterService {
           ? voterData.biometric_hash 
           : crypto.randomBytes(32).toString('hex');
         
+        // Generate temporary hashes for fingerprint and face if not provided
+        const tempFingerprintHash = voterData.fingerprint_hash || null;
+        const tempFaceHash = voterData.face_embedding_hash || null;
+        
         // Build dynamic query with mandatory fields
         // normalizedEmail already declared above, just normalize gender
         const normalizedGender = voterData.gender ? 
@@ -63,7 +67,8 @@ class VoterService {
         const fields = [
           'name', 'dob', 'aadhaar_number', 'biometric_hash', 'is_verified',
           'email', 'mobile_number', 'father_name', 'gender',
-          'house_number', 'street', 'village_city', 'district', 'state', 'pin_code'
+          'house_number', 'street', 'village_city', 'district', 'state', 'pin_code',
+          'fingerprint_hash', 'face_embedding_hash'
         ];
         const values = [
           voterData.name ? voterData.name.trim() : null,
@@ -80,7 +85,9 @@ class VoterService {
           voterData.village_city ? voterData.village_city.trim() : null,
           voterData.district ? voterData.district.trim() : null,
           voterData.state ? voterData.state.trim() : null,
-          voterData.pin_code
+          voterData.pin_code,
+          tempFingerprintHash,
+          tempFaceHash
         ];
 
         // Add optional extended fields if provided
