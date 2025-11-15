@@ -1,0 +1,55 @@
+[
+  {
+    "voter_id": 1,
+    "name": "Rajesh Kumar",
+    "father_name": "Ramesh Kumar",
+    "mother_name": "Sunita Devi",
+    "dob": "1990-05-15",
+    "mobile_number": "9876543210",
+    "aadhaar_number": "123456789012",
+    "address": {
+      "house_number": "123",
+      "street": "Main Street",
+      "village_city": "Delhi",
+      "district": "New Delhi",
+      "state": "Delhi",
+      "pin_code": "110001"
+    }
+  },
+  {
+    "voter_id": 2,
+    "name": "Rajesh Kumar",
+    "father_name": "Ramesh Kumar",
+    "mother_name": "Sunita Devi",
+    "dob": "1990-05-15",
+    "mobile_number": "9876543210",
+    "aadhaar_number": "123456789012",
+    "address": {
+      "house_number": "123",
+      "street": "Main Street",
+      "village_city": "Delhi",
+      "district": "New Delhi",
+      "state": "Delhi",
+      "pin_code": "110001"
+    }
+  },
+  {
+    "voter_id": 3,
+    "name": "Rajesh K",
+    "father_name": "Ramesh K",
+    "mother_name": "Sunita D",
+    "dob": "1990-05-16",
+    "mobile_number": "9876543211",
+    "aadhaar_number": "123456789013",
+    "address": {
+      "house_number": "123",
+      "street": "Main St",
+      "village_city": "Delhi",
+      "district": "New Delhi",
+      "state": "Delhi",
+      "pin_code": "110001"
+    }
+  }
+]
+
+

@@ -1,0 +1,27 @@
+{
+  "language": "ভাষা",
+  "select_language": "ভাষা নির্বাচন করুন",
+  "login": "লগইন",
+  "register": "নিবন্ধন",
+  "logout": "লগআউট",
+  "welcome": "স্বাগতম",
+  "dashboard": "ড্যাশবোর্ড",
+  "admin": "অ্যাডমিন",
+  "profile": "আমার ভোটার প্রোফাইল",
+  "tamper_proof_verification": "ট্যাম্পার-প্রুফ ডিজিটাল ভোটার যাচাইকরণ পোর্টাল",
+  "secure_platform": "ভোটার যাচাইকরণ, ডুপ্লিকেট সনাক্তকরণ এবং অডিট স্বচ্ছতার জন্য একটি নিরাপদ পাবলিক প্ল্যাটফর্ম",
+  "check_voter_status": "ভোটার অবস্থা পরীক্ষা করুন",
+  "enter_aadhaar": "12 অঙ্কের আধার লিখুন",
+  "check_now": "এখনই পরীক্ষা করুন",
+  "loading": "লোড হচ্ছে...",
+  "verify_otp": "যাচাই করুন",
+  "voter_verified": "যাচাইকৃত ভোটার",
+  "name": "নাম",
+  "aadhaar": "আধার",
+  "epic_number": "EPIC",
+  "find_polling_station": "পোলিং স্টেশন খুঁজুন",
+  "grievance": "অভিযোগ জমা দিন",
+  "step": "ধাপ"
+}
+
+

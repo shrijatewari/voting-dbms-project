@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: 'Inter', sans-serif;
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Custom popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #F5F6FA;
+  color: #1a1a1a;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-royal text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-navy transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-primary-navy border-2 border-primary-navy px-6 py-2.5 rounded-lg font-medium hover:bg-primary-light transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-border p-6;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2.5 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-royal focus:border-transparent;
+  }
+}
+

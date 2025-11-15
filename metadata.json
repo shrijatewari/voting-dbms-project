@@ -1,0 +1,5 @@
+{
+  "name": "SecureVote - Biometric Verification System",
+  "description": "An admin dashboard for a tamper-proof biometric voter verification and audit system, featuring real-time statistics, anomaly detection, and audit logging with AI-powered insights.",
+  "requestFramePermissions": []
+}

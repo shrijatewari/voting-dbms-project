@@ -1,0 +1,27 @@
+{
+  "language": "ਭਾਸ਼ਾ",
+  "select_language": "ਭਾਸ਼ਾ ਚੁਣੋ",
+  "login": "ਲਾਗਇਨ",
+  "register": "ਰਜਿਸਟਰ",
+  "logout": "ਲਾਗਆਉਟ",
+  "welcome": "ਸਵਾਗਤ ਹੈ",
+  "dashboard": "ਡੈਸ਼ਬੋਰਡ",
+  "admin": "ਐਡਮਿਨ",
+  "profile": "ਮੇਰਾ ਵੋਟਰ ਪ੍ਰੋਫਾਈਲ",
+  "tamper_proof_verification": "ਟੈਂਪਰ-ਪ੍ਰੂਫ ਡਿਜੀਟਲ ਵੋਟਰ ਪੜਤਾਲ ਪੋਰਟਲ",
+  "secure_platform": "ਵੋਟਰ ਪੜਤਾਲ, ਡੁਪਲੀਕੇਟ ਪਛਾਣ ਅਤੇ ਆਡਿਟ ਪਾਰਦਰਸ਼ਤਾ ਲਈ ਇੱਕ ਸੁਰੱਖਿਤ ਜਨਤਕ ਪਲੇਟਫਾਰਮ",
+  "check_voter_status": "ਵੋਟਰ ਸਥਿਤੀ ਜਾਂਚੋ",
+  "enter_aadhaar": "12 ਅੰਕਾਂ ਦਾ ਆਧਾਰ ਦਾਖਲ ਕਰੋ",
+  "check_now": "ਹੁਣ ਜਾਂਚੋ",
+  "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+  "verify_otp": "ਪੜਤਾਲ ਕਰੋ",
+  "voter_verified": "ਪੜਤਾਲਿਤ ਵੋਟਰ",
+  "name": "ਨਾਮ",
+  "aadhaar": "ਆਧਾਰ",
+  "epic_number": "EPIC",
+  "find_polling_station": "ਪੋਲਿੰਗ ਸਟੇਸ਼ਨ ਲੱਭੋ",
+  "grievance": "ਸ਼ਿਕਾਇਤ ਜਮ੍ਹਾ ਕਰੋ",
+  "step": "ਕਦਮ"
+}
+
+

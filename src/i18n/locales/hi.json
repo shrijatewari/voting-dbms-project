@@ -1,0 +1,27 @@
+{
+  "language": "भाषा",
+  "select_language": "भाषा चुनें",
+  "login": "लॉगिन",
+  "register": "पंजीकरण",
+  "logout": "लॉगआउट",
+  "welcome": "स्वागत है",
+  "dashboard": "डैशबोर्ड",
+  "admin": "प्रशासक",
+  "profile": "मेरा मतदाता प्रोफ़ाइल",
+  "tamper_proof_verification": "टैम्पर-प्रूफ डिजिटल मतदाता सत्यापन पोर्टल",
+  "secure_platform": "मतदाता सत्यापन, डुप्लिकेट पहचान और ऑडिट पारदर्शिता के लिए एक सुरक्षित सार्वजनिक प्लेटफ़ॉर्म",
+  "check_voter_status": "मतदाता स्थिति जांचें",
+  "enter_aadhaar": "12 अंकों का आधार दर्ज करें",
+  "check_now": "अभी जांचें",
+  "loading": "लोड हो रहा है...",
+  "verify_otp": "सत्यापित करें",
+  "voter_verified": "सत्यापित मतदाता",
+  "name": "नाम",
+  "aadhaar": "आधार",
+  "epic_number": "EPIC",
+  "find_polling_station": "मतदान केंद्र खोजें",
+  "grievance": "शिकायत दर्ज करें",
+  "step": "चरण"
+}
+
+

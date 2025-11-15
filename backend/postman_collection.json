@@ -1,0 +1,679 @@
+{
+  "info": {
+    "name": "Voting DBMS API",
+    "description": "Complete API collection for Voting DBMS Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "API Documentation",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api"]
+        }
+      }
+    },
+    {
+      "name": "Voters",
+      "item": [
+        {
+          "name": "Create Voter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"dob\": \"1990-01-15\",\n  \"aadhaar_number\": \"123456789012\",\n  \"biometric_hash\": \"abc123def456ghi789jkl012mno345pqr678stu901vwx234yz\",\n  \"is_verified\": false\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/voters",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters"]
+            }
+          }
+        },
+        {
+          "name": "Get All Voters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/voters?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Voter by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/voters/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Voter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_verified\": true\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/voters/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters", "1"]
+            }
+          }
+        },
+        {
+          "name": "Verify Biometric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aadhaar_number\": \"123456789012\",\n  \"biometric_hash\": \"abc123def456ghi789jkl012mno345pqr678stu901vwx234yz\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/voters/verify-biometric",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters", "verify-biometric"]
+            }
+          }
+        },
+        {
+          "name": "Delete Voter",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/voters/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "voters", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Elections",
+      "item": [
+        {
+          "name": "Create Election",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"2024 General Election\",\n  \"start_date\": \"2024-06-01T00:00:00Z\",\n  \"end_date\": \"2024-06-02T23:59:59Z\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/elections",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "elections"]
+            }
+          }
+        },
+        {
+          "name": "Get All Elections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/elections?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "elections"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Election by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/elections/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "elections", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Election",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/elections/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "elections", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Election",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/elections/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "elections", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Candidates",
+      "item": [
+        {
+          "name": "Create Candidate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"election_id\": 1,\n  \"name\": \"Jane Smith\",\n  \"manifesto\": \"I promise to work for the betterment of our constituency.\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/candidates",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates"]
+            }
+          }
+        },
+        {
+          "name": "Get All Candidates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/candidates?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Candidates by Election",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/candidates?election_id=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates"],
+              "query": [
+                {
+                  "key": "election_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Candidate by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/candidates/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Candidate",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manifesto\": \"Updated manifesto text\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/candidates/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Candidate",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/candidates/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "candidates", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Votes",
+      "item": [
+        {
+          "name": "Cast Vote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voter_id\": 1,\n  \"candidate_id\": 1,\n  \"election_id\": 1\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/votes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "votes"]
+            }
+          }
+        },
+        {
+          "name": "Get Vote by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/votes/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "votes", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Votes by Election",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/votes/election/1?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "votes", "election", "1"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Election Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/votes/election/1/results",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "votes", "election", "1", "results"]
+            }
+          }
+        },
+        {
+          "name": "Verify Vote Hash Chain",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/votes/verify-chain",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "votes", "verify-chain"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Duplicate Detection",
+      "item": [
+        {
+          "name": "Run Duplicate Detection",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/duplicates/run",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "duplicates", "run"]
+            }
+          }
+        },
+        {
+          "name": "Get All Duplicates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/duplicates?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "duplicates"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resolve Duplicate",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolved\": true,\n  \"note\": \"Verified as different individuals\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/duplicates/1/resolve",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "duplicates", "1", "resolve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Death Records",
+      "item": [
+        {
+          "name": "Create Death Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aadhaar_number\": \"123456789012\",\n  \"death_date\": \"2023-12-01\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/death-records",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "death-records"]
+            }
+          }
+        },
+        {
+          "name": "Get All Death Records",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/death-records?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "death-records"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run Death Sync",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/death-records/sync/run",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "death-records", "sync", "run"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/audit-logs?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "audit-logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs by Entity Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/audit-logs?entity_type=voter",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "audit-logs"],
+              "query": [
+                {
+                  "key": "entity_type",
+                  "value": "voter"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Audit Hash Chain",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/audit-logs/verify-chain",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "audit-logs", "verify-chain"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+

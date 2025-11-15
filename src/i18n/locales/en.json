@@ -1,0 +1,27 @@
+{
+  "language": "Language",
+  "select_language": "Select Language",
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "welcome": "Welcome",
+  "dashboard": "Dashboard",
+  "admin": "Admin",
+  "profile": "My Voter Profile",
+  "tamper_proof_verification": "Tamper-Proof Digital Voter Verification Portal",
+  "secure_platform": "A secure public platform for voter verification, duplicate detection & audit transparency",
+  "check_voter_status": "Check Voter Status",
+  "enter_aadhaar": "Enter 12-digit Aadhaar",
+  "check_now": "Check Now",
+  "loading": "Loading...",
+  "verify_otp": "Verify",
+  "voter_verified": "Verified Voter",
+  "name": "Name",
+  "aadhaar": "Aadhaar",
+  "epic_number": "EPIC",
+  "find_polling_station": "Find Polling Station",
+  "grievance": "Submit Grievance",
+  "step": "Step"
+}
+
+

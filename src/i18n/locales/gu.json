@@ -1,0 +1,27 @@
+{
+  "language": "ભાષા",
+  "select_language": "ભાષા પસંદ કરો",
+  "login": "લૉગિન",
+  "register": "નોંધણી",
+  "logout": "લૉગઆઉટ",
+  "welcome": "સ્વાગત છે",
+  "dashboard": "ડેશબોર્ડ",
+  "admin": "એડમિન",
+  "profile": "મારું મતદાતા પ્રોફાઇલ",
+  "tamper_proof_verification": "ટેમ્પર-પ્રૂફ ડિજિટલ મતદાતા ચકાસણી પોર્ટલ",
+  "secure_platform": "મતદાતા ચકાસણી, નકલ ઓળખ અને ઓડિટ પારદર્શિતા માટે સુરક્ષિત જાહેર પ્લેટફોર્મ",
+  "check_voter_status": "મતદાતા સ્થિતિ તપાસો",
+  "enter_aadhaar": "12 અંકનો આધાર દાખલ કરો",
+  "check_now": "હમણાં તપાસો",
+  "loading": "લોડ થઈ રહ્યું છે...",
+  "verify_otp": "ચકાસો",
+  "voter_verified": "ચકાસેલ મતદાતા",
+  "name": "નામ",
+  "aadhaar": "આધાર",
+  "epic_number": "EPIC",
+  "find_polling_station": "પોલિંગ સ્ટેશન શોધો",
+  "grievance": "ફરિયાદ સબમિટ કરો",
+  "step": "પગલું"
+}
+
+

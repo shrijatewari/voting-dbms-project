@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  duplicate-engine:
+    build: ./duplicate-engine
+    ports:
+      - "8001:8001"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  address-engine:
+    build: ./address-engine
+    ports:
+      - "8002:8002"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  deceased-engine:
+    build: ./deceased-engine
+    ports:
+      - "8003:8003"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  document-engine:
+    build: ./document-engine
+    ports:
+      - "8004:8004"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  forgery-engine:
+    build: ./forgery-engine
+    ports:
+      - "8005:8005"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  biometric-engine:
+    build: ./biometric-engine
+    ports:
+      - "8006:8006"
+    environment:
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+

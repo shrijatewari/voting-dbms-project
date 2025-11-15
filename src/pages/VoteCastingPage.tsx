@@ -1,0 +1,119 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { candidateService, voteService } from '../services/api';
+
+export default function VoteCastingPage() {
+  const { electionId } = useParams();
+  const navigate = useNavigate();
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (electionId) {
+      fetchCandidates();
+    }
+  }, [electionId]);
+
+  const fetchCandidates = async () => {
+    try {
+      const response = await candidateService.getAll(1, 100, Number(electionId));
+      setCandidates(response.data.candidates || []);
+    } catch (error) {
+      console.error('Failed to fetch candidates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVote = async () => {
+    if (!selectedCandidate || !electionId) return;
+
+    setSubmitting(true);
+    try {
+      // In real app, get voter_id from auth context
+      const voterId = 1; // Placeholder
+      
+      await voteService.create({
+        voter_id: voterId,
+        candidate_id: selectedCandidate,
+        election_id: Number(electionId),
+      });
+
+      alert('Vote cast successfully!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to cast vote');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-light py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-heading font-bold text-gray-800 mb-8">Cast Your Vote</h1>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-navy"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="card">
+              <h2 className="text-xl font-semibold mb-4">Select a Candidate</h2>
+              <div className="space-y-3">
+                {candidates.map((candidate) => (
+                  <div
+                    key={candidate.candidate_id}
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                      selectedCandidate === candidate.candidate_id
+                        ? 'border-primary-navy bg-primary-light'
+                        : 'border-gray-border hover:border-primary-royal'
+                    }`}
+                    onClick={() => setSelectedCandidate(candidate.candidate_id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">{candidate.name}</h3>
+                        {candidate.manifesto && (
+                          <p className="text-sm text-gray-600 mt-1">{candidate.manifesto.substring(0, 100)}...</p>
+                        )}
+                      </div>
+                      {selectedCandidate === candidate.candidate_id && (
+                        <div className="w-6 h-6 bg-primary-navy rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="btn-secondary flex-1"
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVote}
+                className="btn-primary flex-1"
+                disabled={!selectedCandidate || submitting}
+              >
+                {submitting ? 'Casting Vote...' : 'Cast Vote'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
