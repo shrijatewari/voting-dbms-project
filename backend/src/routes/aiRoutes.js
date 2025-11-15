@@ -8,13 +8,14 @@ const router = express.Router();
 const aiController = require('../controllers/aiController');
 const { authenticateToken } = require('../middleware/auth');
 
-// All routes require authentication (except health check)
-router.use((req, res, next) => {
-  if (req.path === '/health') {
-    return next();
-  }
-  authenticateToken(req, res, next);
-});
+/**
+ * GET /ai/health
+ * Health check for all AI services (PUBLIC - no auth required)
+ */
+router.get('/health', aiController.healthCheck.bind(aiController));
+
+// All other routes require authentication
+router.use(authenticateToken);
 
 /**
  * POST /ai/duplicates/predict
@@ -69,12 +70,6 @@ router.post('/biometrics/face-match', aiController.matchFace.bind(aiController))
  * Match fingerprint templates
  */
 router.post('/biometrics/fingerprint-match', aiController.matchFingerprint.bind(aiController));
-
-/**
- * GET /ai/health
- * Health check for all AI services
- */
-router.get('/health', aiController.healthCheck.bind(aiController));
 
 module.exports = router;
 

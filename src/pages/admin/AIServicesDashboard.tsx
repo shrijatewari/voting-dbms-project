@@ -26,10 +26,29 @@ export default function AIServicesDashboard() {
   const checkHealth = async () => {
     setLoading(true);
     try {
-      const health = await aiService.healthCheck();
+      const response = await aiService.healthCheck();
+      // Handle both direct response and response.data
+      const health = response.data || response;
       setHealthStatus(health);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Health check failed:', error);
+      // If token error, redirect to login
+      if (error.response?.status === 401 || error.message?.includes('token')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        alert('Your session has expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+      // Set error status for each service
+      setHealthStatus({
+        duplicate: { status: 'error', error: error.message || 'Service unavailable' },
+        address: { status: 'error', error: error.message || 'Service unavailable' },
+        deceased: { status: 'error', error: error.message || 'Service unavailable' },
+        document: { status: 'error', error: error.message || 'Service unavailable' },
+        forgery: { status: 'error', error: error.message || 'Service unavailable' },
+        biometric: { status: 'error', error: error.message || 'Service unavailable' }
+      });
     } finally {
       setLoading(false);
     }
@@ -38,6 +57,14 @@ export default function AIServicesDashboard() {
   const testDuplicateDetection = async () => {
     setLoading(true);
     try {
+      // Check if user is logged in
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('Please log in to test AI services.');
+        window.location.href = '/login';
+        return;
+      }
+
       const record1 = {
         voter_id: 1,
         name: 'Rajesh Kumar',
@@ -69,9 +96,16 @@ export default function AIServicesDashboard() {
         }
       };
       const result = await aiService.predictDuplicate(record1, record2);
-      setTestResults({ type: 'duplicate', result });
+      setTestResults({ type: 'duplicate', result: result.data || result });
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Test failed');
+      if (error.response?.status === 401 || error.message?.includes('token')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        alert('Your session has expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+      alert(error.response?.data?.error || error.message || 'Test failed');
     } finally {
       setLoading(false);
     }
