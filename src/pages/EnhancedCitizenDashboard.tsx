@@ -191,7 +191,7 @@ export default function EnhancedCitizenDashboard({ user }: any) {
                 {voter?.is_verified ? 'Verified' : 'Pending'}
               </div>
             </div>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm mb-4">
               <p><span className="text-gray-600">Name:</span> <span className="font-semibold">{voter?.name || 'N/A'}</span></p>
               <p><span className="text-gray-600">Aadhaar:</span> <span className="font-semibold">
                 {voter?.aadhaar_number ? `XXXX-XXXX-${voter.aadhaar_number.substring(8)}` : 'N/A'}
