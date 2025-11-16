@@ -10,8 +10,12 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1] || req.query.token || req.cookies?.token;
 
   if (!token) {
-    // For profile endpoints, return 200 with null instead of 401 to prevent session expired alerts
-    const isProfileEndpoint = req.path.includes('/profile') || req.path.includes('/completion');
+    // For profile endpoints, allow through without token to prevent session expired alerts
+    // Check both path and originalUrl to catch all variations
+    const isProfileEndpoint = req.path.includes('/profile') || 
+                              req.path.includes('/completion') ||
+                              req.originalUrl.includes('/profile') || 
+                              req.originalUrl.includes('/completion');
     if (isProfileEndpoint) {
       req.user = null; // Set user to null but continue
       return next(); // Let controller handle it gracefully
@@ -21,8 +25,12 @@ function authenticateToken(req, res, next) {
 
   jwt.verify(token, process.env.JWT_SECRET || 'default_secret', async (err, user) => {
     if (err) {
-      // For profile endpoints, return 200 with null instead of 403 to prevent session expired alerts
-      const isProfileEndpoint = req.path.includes('/profile') || req.path.includes('/completion');
+      // For profile endpoints, allow through even with invalid token to prevent session expired alerts
+      // Check both path and originalUrl to catch all variations
+      const isProfileEndpoint = req.path.includes('/profile') || 
+                                req.path.includes('/completion') ||
+                                req.originalUrl.includes('/profile') || 
+                                req.originalUrl.includes('/completion');
       if (isProfileEndpoint) {
         req.user = null; // Set user to null but continue
         return next(); // Let controller handle it gracefully
