@@ -118,7 +118,11 @@ class DeathSyncService {
       for (const record of deathRecords) {
         try {
           // Find voter by Aadhaar
-          const voter = await voterService.getVoterByAadhaar(record.aadhaar_number);
+          const [voters] = await connection.query(
+            'SELECT * FROM voters WHERE aadhaar_number = ? LIMIT 1',
+            [record.aadhaar_number]
+          );
+          const voter = voters[0] || null;
           
           if (voter) {
             matched++;

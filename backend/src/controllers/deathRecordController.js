@@ -38,7 +38,7 @@ class DeathRecordController {
     try {
       const { mode = 'dry-run', threshold = 0.9 } = req.body;
       const result = await deathSyncService.runDeathSync({ mode, threshold: parseFloat(threshold) });
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -48,7 +48,7 @@ class DeathRecordController {
     try {
       const status = req.query.status || null;
       const flags = await deathSyncService.getDeathSyncFlags(status);
-      res.json({ success: true, data: flags });
+      res.json({ success: true, data: { flags: Array.isArray(flags) ? flags : [] } });
     } catch (error) {
       next(error);
     }

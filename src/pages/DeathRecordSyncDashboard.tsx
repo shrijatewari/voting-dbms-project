@@ -16,7 +16,8 @@ export default function DeathRecordSyncDashboard() {
     setRunning(true);
     try {
       const result = await deathRecordService.runSync({ mode, threshold });
-      alert(`Death record sync ${mode === 'dry-run' ? 'completed (dry-run)' : 'applied'}! Found ${result.data.matched_count || 0} matches.`);
+      const data = result.data?.data || result.data || {};
+      alert(`Death record sync ${mode === 'dry-run' ? 'completed (dry-run)' : 'applied'}! Found ${data.matched || data.matched_count || 0} matches, ${data.flagged || 0} flags created.`);
       loadSyncFlags();
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to run death record sync');
