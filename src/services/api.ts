@@ -1,5 +1,18 @@
 import api from '../config/api';
 
+// Admin
+export const adminService = {
+  getStats: () => api.get('/admin/dashboard/stats'),
+  getGraphs: () => api.get('/admin/dashboard/graphs'),
+  getAIStatus: () => api.get('/admin/dashboard/ai-status'),
+};
+
+// Auth
+export const authService = {
+  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
+  me: () => api.get('/auth/me'),
+};
+
 // Voters
 export const voterService = {
   getAll: (page = 1, limit = 10) => api.get(`/voters?page=${page}&limit=${limit}`),
@@ -203,7 +216,10 @@ export const deathRecordService = {
 // BLO Tasks
 export const bloTaskService = {
   assignTask: (data: any) => api.post('/tasks/assign', data),
-  getBLOTasks: (bloId: number) => api.get(`/tasks/blo/${bloId}`),
+  getBLOTasks: (bloId: number, status?: string) => {
+    const query = status ? `?status=${status}` : '';
+    return api.get(`/tasks/blo/${bloId}${query}`);
+  },
   submitTask: (taskId: number, data: any) => api.post(`/tasks/${taskId}/submit`, data),
 };
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
+import { authService } from '../services/api';
 
 export default function LoginPage({ setUser, setIsAdmin }: any) {
   const { t } = useTranslation();
@@ -13,23 +14,29 @@ export default function LoginPage({ setUser, setIsAdmin }: any) {
     e.preventDefault();
     setError('');
 
-    // For demo purposes - in production, use actual JWT auth
-    if (formData.email && formData.password) {
-      const userData = {
-        id: 1,
-        email: formData.email,
-        name: 'Demo User',
-        role: formData.email.includes('admin') ? 'admin' : 'citizen',
-      };
-      
-      localStorage.setItem('auth_token', 'demo_token');
+    if (!formData.email || !formData.password) {
+      setError('Please enter email and password');
+      return;
+    }
+
+    try {
+      const resp = await authService.login(formData.email, formData.password);
+      const data = resp.data || resp;
+      if (!data.success && !data.token) {
+        throw new Error(data.error || 'Login failed');
+      }
+      const token = data.token;
+      const userData = data.user;
+      localStorage.setItem('auth_token', token);
       localStorage.setItem('user_data', JSON.stringify(userData));
       setUser(userData);
-      setIsAdmin(userData.role === 'admin');
-      
-      navigate(userData.role === 'admin' ? '/admin' : '/dashboard');
-    } else {
-      setError('Please enter email and password');
+      // Treat non-citizen roles as admin (eci/ceo/deo/ero/blo/admin)
+      const isAdminRole = userData.role && userData.role.toLowerCase() !== 'citizen';
+      setIsAdmin(isAdminRole);
+      navigate(isAdminRole ? '/admin' : '/dashboard');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Login failed';
+      setError(msg);
     }
   };
 
@@ -89,8 +96,7 @@ export default function LoginPage({ setUser, setIsAdmin }: any) {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Demo: Use any email/password</p>
-            <p className="mt-2">For admin: use email containing "admin"</p>
+            <p>Login requires a registered email. Use a seeded admin account if available.</p>
           </div>
 
           <div className="mt-6 text-center">

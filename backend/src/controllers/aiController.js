@@ -4,7 +4,7 @@
  */
 
 const aiClient = require('../services/aiClient');
-const pool = require('../config/database').pool;
+const pool = require('../config/database');
 
 class AIController {
   /**

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { aiService } from '../../services/api';
+import { aiService, voterService } from '../../services/api';
 import LanguageSelector from '../../components/LanguageSelector';
 
 interface AIHealthStatus {
@@ -12,16 +12,205 @@ interface AIHealthStatus {
   };
 }
 
+type DemoResult = {
+  status: 'success' | 'error';
+  result?: any;
+  error?: string;
+  timestamp?: string;
+};
+
+const formatPercent = (value?: number) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '0.0%';
+  }
+  return `${(value * 100).toFixed(1)}%`;
+};
+
+const mapVoterToRecord = (voter: any) => ({
+  voter_id: voter?.voter_id,
+  name: voter?.name,
+  dob: voter?.dob,
+  aadhaar_number: voter?.aadhaar_number,
+  father_name: voter?.father_name,
+  address: {
+    house_number: voter?.house_number,
+    street: voter?.street,
+    village_city: voter?.village_city,
+    district: voter?.district,
+    state: voter?.state,
+    pin_code: voter?.pin_code
+  }
+});
+
+const DEFAULT_RECORDS = [
+  {
+    voter_id: 1,
+    name: 'Rajesh Kumar',
+    dob: '1990-05-15',
+    aadhaar_number: '123456789012',
+    father_name: 'Ramesh Kumar',
+    address: {
+      house_number: '123',
+      street: 'Main Street',
+      village_city: 'Delhi',
+      district: 'New Delhi',
+      state: 'Delhi',
+      pin_code: '110001'
+    }
+  },
+  {
+    voter_id: 2,
+    name: 'Rajesh K',
+    dob: '1990-05-15',
+    aadhaar_number: '123456789013',
+    father_name: 'Ramesh K',
+    address: {
+      house_number: '123',
+      street: 'Main St',
+      village_city: 'Delhi',
+      district: 'New Delhi',
+      state: 'Delhi',
+      pin_code: '110001'
+    }
+  }
+];
+
 export default function AIServicesDashboard() {
   const { t } = useTranslation();
   const [healthStatus, setHealthStatus] = useState<AIHealthStatus>({});
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [testResults, setTestResults] = useState<any>(null);
+  const [sampleRecords, setSampleRecords] = useState<any[]>([]);
+  const [demoResults, setDemoResults] = useState<Record<string, DemoResult>>({});
+  const [runningDemo, setRunningDemo] = useState(false);
+  const [demoTimeline, setDemoTimeline] = useState<string[]>([]);
 
   useEffect(() => {
     checkHealth();
+    fetchSampleData();
   }, []);
+
+  const fetchSampleData = async () => {
+    try {
+      const res = await voterService.getAll(1, 5);
+      const records = (res.data?.voters || []).map(mapVoterToRecord);
+      if (records.length >= 2) {
+        setSampleRecords(records);
+        runLiveDemo(records);
+      } else {
+        setSampleRecords(DEFAULT_RECORDS);
+        runLiveDemo(DEFAULT_RECORDS);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch sample voters, falling back to mock data.');
+      setSampleRecords(DEFAULT_RECORDS);
+      runLiveDemo(DEFAULT_RECORDS);
+    }
+  };
+
+  const runLiveDemo = async (recordsOverride?: any[]) => {
+    const records = recordsOverride && recordsOverride.length >= 2 ? recordsOverride : sampleRecords;
+    setRunningDemo(true);
+    const timeline: string[] = [];
+    const appendLog = (msg: string) => {
+      const entry = `${new Date().toLocaleTimeString()} • ${msg}`;
+      timeline.unshift(entry);
+    };
+    const demoPayload: Record<string, DemoResult> = {};
+
+      const record1 = (records && records[0]) || DEFAULT_RECORDS[0];
+      const record2 = (records && records[1]) || DEFAULT_RECORDS[1];
+      appendLog(`Loaded voter #${record1.voter_id} (${record1.name}) and voter #${record2.voter_id} (${record2.name})`);
+
+    try {
+      const duplicate = await aiService.predictDuplicate(record1, record2);
+      demoPayload.duplicate = {
+        status: 'success',
+        result: duplicate.data || duplicate,
+        timestamp: new Date().toISOString()
+      };
+      appendLog(
+        `Duplicate check complete – probability ${formatPercent(duplicate.data?.duplicate_probability ?? duplicate.duplicate_probability)}`
+      );
+    } catch (error: any) {
+      demoPayload.duplicate = { status: 'error', error: error.message };
+      appendLog('Duplicate check failed (using fallback).');
+    }
+
+    try {
+      const normalized = await aiService.normalizeAddress(record1.address);
+      demoPayload.address = {
+        status: 'success',
+        result: normalized.data || normalized,
+        timestamp: new Date().toISOString()
+      };
+      appendLog(
+        `Address normalized for ${normalized.data?.normalized_address?.village_city ?? normalized.normalized_address?.village_city}`
+      );
+    } catch (error: any) {
+      demoPayload.address = { status: 'error', error: error.message };
+      appendLog('Address normalization failed (using fallback).');
+    }
+
+    try {
+      const fraudAddress = {
+        ...record1.address,
+        house_number: 'Ghost 999',
+        street: 'Phantom Lane',
+        village_city: 'Nowhere',
+        pin_code: '000000'
+      };
+      const fraud = await aiService.detectAddressFraud(fraudAddress);
+      demoPayload.fraud = {
+        status: 'success',
+        result: fraud.data || fraud,
+        timestamp: new Date().toISOString()
+      };
+      appendLog(`Fraud scan result – ${fraud.data?.is_fraud ?? fraud.is_fraud ? 'risk detected' : 'no red flags'}.`);
+    } catch (error: any) {
+      demoPayload.fraud = { status: 'error', error: error.message };
+      appendLog('Fraud scan failed (using fallback).');
+    }
+
+    try {
+      const mockBase64 =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const document = await aiService.verifyDocument(mockBase64, 'aadhaar');
+      demoPayload.document = {
+        status: 'success',
+        result: document.data || document,
+        timestamp: new Date().toISOString()
+      };
+      appendLog(`Document OCR confidence ${formatPercent(document.data?.confidence ?? document.confidence)}.`);
+    } catch (error: any) {
+      demoPayload.document = { status: 'error', error: error.message };
+      appendLog('Document verification failed (using fallback).');
+    }
+
+    try {
+      const embedding1 = Array(128)
+        .fill(0)
+        .map(() => Math.random());
+      const embedding2 = Array(128)
+        .fill(0)
+        .map(() => Math.random());
+      const face = await aiService.matchFace(embedding1, embedding2);
+      demoPayload.face = {
+        status: 'success',
+        result: face.data || face,
+        timestamp: new Date().toISOString()
+      };
+      appendLog(`Face match similarity ${formatPercent(face.data?.similarity_score ?? face.similarity_score)}.`);
+    } catch (error: any) {
+      demoPayload.face = { status: 'error', error: error.message };
+      appendLog('Face matching failed (using fallback).');
+    }
+
+    setDemoResults(demoPayload);
+    setDemoTimeline(timeline.slice(0, 8));
+    setRunningDemo(false);
+  };
 
   const checkHealth = async () => {
     setLoading(true);
@@ -65,36 +254,8 @@ export default function AIServicesDashboard() {
         return;
       }
 
-      const record1 = {
-        voter_id: 1,
-        name: 'Rajesh Kumar',
-        dob: '1990-05-15',
-        aadhaar_number: '123456789012',
-        father_name: 'Ramesh Kumar',
-        address: {
-          house_number: '123',
-          street: 'Main Street',
-          village_city: 'Delhi',
-          district: 'New Delhi',
-          state: 'Delhi',
-          pin_code: '110001'
-        }
-      };
-      const record2 = {
-        voter_id: 2,
-        name: 'Rajesh K',
-        dob: '1990-05-15',
-        aadhaar_number: '123456789013',
-        father_name: 'Ramesh K',
-        address: {
-          house_number: '123',
-          street: 'Main St',
-          village_city: 'Delhi',
-          district: 'New Delhi',
-          state: 'Delhi',
-          pin_code: '110001'
-        }
-      };
+      const record1 = sampleRecords[0] || DEFAULT_RECORDS[0];
+      const record2 = sampleRecords[1] || DEFAULT_RECORDS[1];
       const result = await aiService.predictDuplicate(record1, record2);
       setTestResults({ type: 'duplicate', result: result.data || result });
     } catch (error: any) {
@@ -114,14 +275,15 @@ export default function AIServicesDashboard() {
   const testAddressNormalization = async () => {
     setLoading(true);
     try {
-      const address = {
-        house_number: '123',
-        street: 'Main St',
-        village_city: 'delhi',
-        district: 'new delhi',
-        state: 'DELHI',
-        pin_code: '110001'
-      };
+      const address =
+        sampleRecords[0]?.address || {
+          house_number: '123',
+          street: 'Main St',
+          village_city: 'Delhi',
+          district: 'New Delhi',
+          state: 'Delhi',
+          pin_code: '110001'
+        };
       const result = await aiService.normalizeAddress(address);
       setTestResults({ type: 'address', result });
     } catch (error: any) {
@@ -134,13 +296,15 @@ export default function AIServicesDashboard() {
   const testAddressFraud = async () => {
     setLoading(true);
     try {
+      const baseAddress = sampleRecords[0]?.address || {};
       const address = {
-        house_number: 'Fake House',
-        street: 'Test Street',
-        village_city: 'Unknown',
-        district: 'Test',
-        state: 'Test State',
-        pin_code: '12345'
+        ...baseAddress,
+        house_number: baseAddress.house_number || 'Ghost 404',
+        street: 'Fraudster Gali',
+        village_city: 'Phantom City',
+        district: baseAddress.district || 'Unknown',
+        state: baseAddress.state || 'Nowhere',
+        pin_code: '999999'
       };
       const result = await aiService.detectAddressFraud(address);
       setTestResults({ type: 'fraud', result });
@@ -278,6 +442,125 @@ export default function AIServicesDashboard() {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Live Demo */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Live Demo (Seeded Data)</h2>
+              <p className="text-sm text-gray-500">Auto-runs tests using the seeded voter dataset so you can present real numbers instantly.</p>
+            </div>
+            <button
+              onClick={() => runLiveDemo()}
+              disabled={runningDemo}
+              className="px-4 py-2 bg-primary-navy text-white rounded-lg hover:bg-primary-royal transition disabled:opacity-50"
+            >
+              {runningDemo ? 'Running...' : 'Re-run Demo'}
+            </button>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {['duplicate', 'address', 'fraud', 'document', 'face'].map((key) => {
+              const data = demoResults[key] || {};
+              return (
+                <div key={key} className="border rounded-xl p-4 bg-gray-50 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-700 capitalize">{key} test</h3>
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        data.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {data.status === 'success' ? 'Ready' : 'Error'}
+                    </span>
+                  </div>
+                  {data.status === 'success' ? (
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {key === 'duplicate' && (
+                        <>
+                          <p>Probability: <strong className="text-primary-navy">{formatPercent(data.result?.duplicate_probability)}</strong></p>
+                          <p>Confidence: <strong>{formatPercent(data.result?.confidence)}</strong></p>
+                          <p>Recommendation: <span className="capitalize">{data.result?.recommendation}</span></p>
+                        </>
+                      )}
+                      {key === 'address' && (
+                        <>
+                          <p>Normalized City: <strong>{data.result?.normalized_address?.village_city || 'N/A'}</strong></p>
+                          <p>Confidence: <strong>{formatPercent(data.result?.confidence)}</strong></p>
+                        </>
+                      )}
+                      {key === 'fraud' && (
+                        <>
+                          <p>Fraud Detected: <strong>{data.result?.is_fraud ? 'Yes' : 'No'}</strong></p>
+                          <p>Risk Score: <strong>{formatPercent(data.result?.risk_score)}</strong></p>
+                        </>
+                      )}
+                      {key === 'document' && (
+                        <>
+                          <p>Fake Document: <strong>{data.result?.is_fake ? 'Yes' : 'No'}</strong></p>
+                          <p>Confidence: <strong>{formatPercent(data.result?.confidence)}</strong></p>
+                        </>
+                      )}
+                      {key === 'face' && (
+                        <>
+                          <p>Match Probability: <strong>{formatPercent(data.result?.match_probability)}</strong></p>
+                          <p>Similarity: <strong>{formatPercent(data.result?.similarity_score)}</strong></p>
+                        </>
+                      )}
+                      <p className="text-xs text-gray-400">
+                        {data.timestamp ? `Updated ${new Date(data.timestamp).toLocaleTimeString()}` : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-600">{data.error || 'Awaiting run'}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Data Being Scanned</h3>
+            <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left">Voter ID</th>
+                  <th className="px-4 py-2 text-left">Name</th>
+                  <th className="px-4 py-2 text-left">Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(sampleRecords.length ? sampleRecords.slice(0, 2) : DEFAULT_RECORDS).map((record) => (
+                  <tr key={record.voter_id} className="border-t">
+                    <td className="px-4 py-2 font-semibold text-gray-800">#{record.voter_id}</td>
+                    <td className="px-4 py-2 text-gray-700">{record.name}</td>
+                    <td className="px-4 py-2 text-gray-600 text-xs">
+                      {[record.address?.house_number, record.address?.street, record.address?.village_city, record.address?.district, record.address?.state, record.address?.pin_code]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-gray-400 mt-3">These two records are fed into duplicate, address, fraud, document, and face-matching AI tests live.</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Scanning Timeline</h3>
+            <div className="h-48 overflow-y-auto space-y-2">
+              {demoTimeline.length === 0 ? (
+                <p className="text-sm text-gray-500">Run the demo to see the AI processing log.</p>
+              ) : (
+                demoTimeline.map((entry, idx) => (
+                  <div key={idx} className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded px-3 py-2">
+                    {entry}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -473,14 +756,14 @@ export default function AIServicesDashboard() {
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-semibold">Duplicate Probability:</span>
                           <span className={`text-3xl font-bold ${
-                            testResults.result.duplicate_probability > 0.7 ? 'text-red-600' : 'text-green-600'
+                            (testResults.result.duplicate_probability || 0) > 0.7 ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {(testResults.result.duplicate_probability * 100).toFixed(1)}%
+                            {formatPercent(testResults.result.duplicate_probability)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-semibold">Confidence:</span>
-                          <span className="text-xl">{(testResults.result.confidence * 100).toFixed(1)}%</span>
+                          <span className="text-xl">{formatPercent(testResults.result.confidence)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">Recommendation:</span>
@@ -500,7 +783,7 @@ export default function AIServicesDashboard() {
                             {Object.entries(testResults.result.features).map(([key, value]: [string, any]) => (
                               <div key={key} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                 <span className="text-sm text-gray-700 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                <span className="font-bold text-primary-navy">{(value * 100).toFixed(1)}%</span>
+                                <span className="font-bold text-primary-navy">{formatPercent(value as number)}</span>
                               </div>
                             ))}
                           </div>
@@ -530,7 +813,7 @@ export default function AIServicesDashboard() {
                       <div className="mt-3">
                         <span className="font-semibold">Confidence: </span>
                         <span className="text-lg font-bold text-primary-navy">
-                          {(testResults.result.confidence * 100).toFixed(1)}%
+                          {formatPercent(testResults.result.confidence)}
                         </span>
                       </div>
                     </div>
@@ -549,7 +832,7 @@ export default function AIServicesDashboard() {
                       <div className="mb-2">
                         <span className="font-semibold">Risk Score: </span>
                         <span className="text-2xl font-bold text-orange-600">
-                          {(testResults.result.risk_score * 100).toFixed(1)}%
+                          {formatPercent(testResults.result.risk_score)}
                         </span>
                       </div>
                       {testResults.result.reasons && testResults.result.reasons.length > 0 && (
@@ -578,7 +861,7 @@ export default function AIServicesDashboard() {
                       <div className="mb-2">
                         <span className="font-semibold">Confidence: </span>
                         <span className="text-xl font-bold text-primary-navy">
-                          {(testResults.result.confidence * 100).toFixed(1)}%
+                          {formatPercent(testResults.result.confidence)}
                         </span>
                       </div>
                       {testResults.result.ocr_data && (
@@ -597,16 +880,16 @@ export default function AIServicesDashboard() {
                       <div className="mb-4">
                         <span className="font-semibold">Match Probability: </span>
                         <span className="text-3xl font-bold text-primary-navy">
-                          {(testResults.result.match_probability * 100).toFixed(1)}%
+                          {formatPercent(testResults.result.match_probability)}
                         </span>
                       </div>
                       <div className="mb-2">
                         <span className="font-semibold">Similarity Score: </span>
-                        <span className="text-xl">{(testResults.result.similarity_score * 100).toFixed(1)}%</span>
+                        <span className="text-xl">{formatPercent(testResults.result.similarity_score)}</span>
                       </div>
                       <div>
                         <span className="font-semibold">Confidence: </span>
-                        <span className="text-lg">{(testResults.result.confidence * 100).toFixed(1)}%</span>
+                        <span className="text-lg">{formatPercent(testResults.result.confidence)}</span>
                       </div>
                     </div>
                   )}

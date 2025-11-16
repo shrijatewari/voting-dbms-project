@@ -31,6 +31,8 @@ import EndToEndVerificationPage from './pages/EndToEndVerificationPage';
 import VoterManagement from './pages/admin/VoterManagement';
 import RollRevision from './pages/admin/RollRevision';
 import AIServicesDashboard from './pages/admin/AIServicesDashboard';
+import GrievanceManagement from './pages/admin/GrievanceManagement';
+import EPICManagement from './pages/admin/EPICManagement';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
@@ -44,7 +46,8 @@ function App() {
     if (token && userData) {
       const parsed = JSON.parse(userData);
       setUser(parsed);
-      setIsAdmin(parsed.role === 'admin');
+      // Consider any non-citizen role as admin access
+      setIsAdmin(parsed.role && parsed.role.toLowerCase() !== 'citizen');
     }
   }, []);
 
@@ -105,6 +108,22 @@ function App() {
           element={
             <ProtectedRoute adminOnly>
               <AIServicesDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/grievances"
+          element={
+            <ProtectedRoute adminOnly>
+              <GrievanceManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/epic"
+          element={
+            <ProtectedRoute adminOnly>
+              <EPICManagement />
             </ProtectedRoute>
           }
         />

@@ -20,7 +20,21 @@ class EPICService {
          WHERE v.epic_number = ?`,
         [epicNumber]
       );
-      return rows[0] || null;
+
+      if (!rows[0]) {
+        return null;
+      }
+
+      const voter = rows[0];
+
+      if (!voter.epic_number) {
+        voter.epic_number = await this.assignEPICNumber(connection, voter);
+      }
+
+      voter.address = this.formatAddress(voter);
+      voter.polling_station = voter.station_name;
+      voter.aadhaar_masked = this.maskAadhaar(voter.aadhaar_number);
+      return voter;
     } finally {
       connection.release();
     }
@@ -47,7 +61,7 @@ class EPICService {
       const voter = voters[0];
       
       if (!voter.epic_number) {
-        throw new Error('EPIC number not generated yet');
+        voter.epic_number = await this.assignEPICNumber(connection, voter);
       }
 
       // In production, use pdfkit or puppeteer to generate PDF
@@ -104,6 +118,23 @@ class EPICService {
       throw new Error('EPIC not found');
     }
     return await this.generateEPICPDF(epicData.voter_id);
+  }
+
+  /**
+   * Assign EPIC number if missing
+   */
+  async assignEPICNumber(connection, voter) {
+    const epicNumber = this.buildEPICNumber(voter);
+    await connection.query('UPDATE voters SET epic_number = ? WHERE voter_id = ?', [epicNumber, voter.voter_id]);
+    return epicNumber;
+  }
+
+  buildEPICNumber(voter) {
+    const stateCode = (voter.state || 'IN').toString().substring(0, 2).toUpperCase().padEnd(2, 'X');
+    const districtCode = (voter.district || 'EC').toString().substring(0, 2).toUpperCase().padEnd(2, 'X');
+    const serial = String(voter.voter_id).padStart(6, '0');
+    const random = Math.floor(10 + Math.random() * 90); // two digits
+    return `${stateCode}${districtCode}${serial}${random}`.substring(0, 12);
   }
 }
 

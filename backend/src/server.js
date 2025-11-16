@@ -36,12 +36,29 @@ const siemRoutes = require('./routes/siemRoutes');
 const ledgerRoutes = require('./routes/ledgerRoutes');
 const endToEndVerificationRoutes = require('./routes/endToEndVerificationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const authRoutes = require('./routes/authRoutes');
+const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  process.env.FRONTEND_ORIGIN || ''
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow curl/postman
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, true); // permissive during development; tighten if needed
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 images
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -73,6 +90,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/voters', voterRoutes);
 app.use('/api/elections', electionRoutes);
 app.use('/api/candidates', candidateRoutes);
@@ -100,6 +118,7 @@ app.use('/api/security', siemRoutes);
 app.use('/api/ledger', ledgerRoutes);
 app.use('/api/end-to-end', endToEndVerificationRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminDashboardRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {

@@ -10,6 +10,9 @@ export default function VoterManagement() {
   const [selectedVoter, setSelectedVoter] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [editForm, setEditForm] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     fetchVoters();
@@ -62,6 +65,47 @@ export default function VoterManagement() {
   const maskAadhaar = (aadhaar: string) => {
     if (!aadhaar) return 'N/A';
     return `XXXX-XXXX-${aadhaar.slice(-4)}`;
+  };
+
+  useEffect(() => {
+    if (selectedVoter) {
+      setEditForm({
+        name: selectedVoter.name || '',
+        email: selectedVoter.email || '',
+        mobile_number: selectedVoter.mobile_number || '',
+        is_verified: !!selectedVoter.is_verified,
+        gender: selectedVoter.gender || '',
+        house_number: selectedVoter.house_number || '',
+        street: selectedVoter.street || '',
+        village_city: selectedVoter.village_city || '',
+        district: selectedVoter.district || '',
+        state: selectedVoter.state || '',
+        pin_code: selectedVoter.pin_code || ''
+      });
+      setActionError('');
+    } else {
+      setEditForm(null);
+    }
+  }, [selectedVoter]);
+
+  const handleUpdateVoter = async () => {
+    if (!selectedVoter) return;
+    setSaving(true);
+    setActionError('');
+    try {
+      await voterService.update(selectedVoter.voter_id, editForm);
+      await fetchVoters();
+      setSelectedVoter(null);
+    } catch (error: any) {
+      setActionError(error.response?.data?.error || 'Failed to update voter');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedVoter(null);
+    setActionError('');
   };
 
   return (
@@ -213,6 +257,153 @@ export default function VoterManagement() {
           </div>
         </div>
       </div>
+
+      {selectedVoter && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Edit Voter</h2>
+                <p className="text-sm text-gray-500">Voter ID #{selectedVoter.voter_id}</p>
+              </div>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            {actionError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {actionError}
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Mobile Number</label>
+                <input
+                  type="tel"
+                  value={editForm.mobile_number}
+                  onChange={(e) => setEditForm({ ...editForm, mobile_number: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Verification Status</label>
+                <select
+                  value={editForm.is_verified ? 'verified' : 'pending'}
+                  onChange={(e) => setEditForm({ ...editForm, is_verified: e.target.value === 'verified' })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                >
+                  <option value="verified">Verified</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Gender</label>
+                <select
+                  value={editForm.gender || ''}
+                  onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">PIN Code</label>
+                <input
+                  type="text"
+                  value={editForm.pin_code || ''}
+                  onChange={(e) => setEditForm({ ...editForm, pin_code: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                />
+              </div>
+              <div className="md:col-span-2 grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">House Number</label>
+                  <input
+                    type="text"
+                    value={editForm.house_number || ''}
+                    onChange={(e) => setEditForm({ ...editForm, house_number: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">Street</label>
+                  <input
+                    type="text"
+                    value={editForm.street || ''}
+                    onChange={(e) => setEditForm({ ...editForm, street: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">City / Village</label>
+                  <input
+                    type="text"
+                    value={editForm.village_city || ''}
+                    onChange={(e) => setEditForm({ ...editForm, village_city: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">District</label>
+                  <input
+                    type="text"
+                    value={editForm.district || ''}
+                    onChange={(e) => setEditForm({ ...editForm, district: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">State</label>
+                  <input
+                    type="text"
+                    value={editForm.state || ''}
+                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-navy focus:ring-2 focus:ring-primary-navy/30"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-4">
+              <button
+                onClick={closeModal}
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateVoter}
+                className="px-6 py-2 rounded-lg bg-primary-navy text-white hover:bg-primary-royal disabled:opacity-50"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

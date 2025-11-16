@@ -33,7 +33,24 @@ class BLOTaskService {
     const connection = await pool.getConnection();
     try {
       let query = `
-        SELECT t.*, v.name as voter_name, v.aadhaar_number, v.address, v.pin_code
+        SELECT 
+          t.*, 
+          v.name as voter_name, 
+          v.aadhaar_number,
+          v.house_number,
+          v.street,
+          v.village_city,
+          v.district,
+          v.state,
+          v.pin_code,
+          CONCAT_WS(', ', 
+            NULLIF(v.house_number, ''), 
+            NULLIF(v.street, ''), 
+            NULLIF(v.village_city, ''), 
+            NULLIF(v.district, ''), 
+            NULLIF(v.state, ''), 
+            NULLIF(v.pin_code, '')
+          ) as voter_address
         FROM blo_tasks t
         JOIN voters v ON t.voter_id = v.voter_id
         WHERE t.blo_id = ?
@@ -88,7 +105,7 @@ class BLOTaskService {
       // If verification passed, update voter status
       if (status === 'completed' && task.task_type === 'field-verification') {
         await connection.query(
-          'UPDATE voters SET is_verified = TRUE, verified_at = NOW() WHERE voter_id = ?',
+          'UPDATE voters SET is_verified = TRUE WHERE voter_id = ?',
           [task.voter_id]
         );
       }
@@ -124,7 +141,24 @@ class BLOTaskService {
     const connection = await pool.getConnection();
     try {
       const [tasks] = await connection.query(
-        `SELECT t.*, v.name as voter_name, v.aadhaar_number, v.address
+        `SELECT 
+          t.*, 
+          v.name as voter_name, 
+          v.aadhaar_number,
+          v.house_number,
+          v.street,
+          v.village_city,
+          v.district,
+          v.state,
+          v.pin_code,
+          CONCAT_WS(', ', 
+            NULLIF(v.house_number, ''), 
+            NULLIF(v.street, ''), 
+            NULLIF(v.village_city, ''), 
+            NULLIF(v.district, ''), 
+            NULLIF(v.state, ''), 
+            NULLIF(v.pin_code, '')
+          ) as voter_address
          FROM blo_tasks t
          JOIN voters v ON t.voter_id = v.voter_id
          WHERE t.task_id = ?`,

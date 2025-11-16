@@ -2,16 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  voterService, 
-  electionService, 
-  voteService, 
-  duplicateService,
-  deathRecordService,
-  bloTaskService,
-  grievanceService,
-  revisionService,
-  transparencyService,
-  auditLogService
+  adminService
 } from '../services/api';
 import LanguageSelector from '../components/LanguageSelector';
 import { 
@@ -55,6 +46,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusDistribution, setStatusDistribution] = useState<any[]>([]);
+  const [aiHealth, setAIHealth] = useState<any>({});
 
   useEffect(() => {
     fetchStats();
@@ -63,50 +55,23 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const [
-        voters,
-        elections,
-        duplicates,
-        deathRecords,
-        bloTasks,
-        grievances,
-        revisionBatches
-      ] = await Promise.all([
-        voterService.getAll(1, 1),
-        electionService.getAll(1, 100),
-        duplicateService.getAll(1, 1),
-        deathRecordService.getAll(1, 1),
-        bloTaskService.getAll(1, 1),
-        grievanceService.getAll({ status: 'open' }, 1, 1),
-        revisionService.getAll(1, 1),
-      ]);
-
-      const votersData = voters.data.voters || [];
-      const verifiedCount = votersData.filter((v: any) => v.is_verified).length;
-      const pendingCount = votersData.filter((v: any) => !v.is_verified).length;
-
+      const res = await adminService.getStats();
+      const data = res.data?.data || res.data || {};
       setStats({
-        totalVoters: voters.data.pagination?.total || 0,
-        verifiedVoters: verifiedCount,
-        pendingVerification: pendingCount,
-        totalElections: elections.data.pagination?.total || 0,
-        activeElections: elections.data.elections?.filter((e: any) => e.status === 'active').length || 0,
-        totalVotes: 0,
-        duplicates: duplicates.data.pagination?.total || 0,
-        deceasedPending: deathRecords.data.pagination?.total || 0,
-        revisionBatches: revisionBatches.data.pagination?.total || 0,
-        grievancesPending: grievances.data.pagination?.total || 0,
-        bloTasksPending: bloTasks.data.pagination?.total || 0,
-        suspiciousAddresses: 0, // Would need separate endpoint
-        epicGeneratedToday: 0, // Would need separate endpoint
+        totalVoters: data.totalVoters || 0,
+        verifiedVoters: data.verifiedVoters || 0,
+        pendingVerification: data.pendingVerification || 0,
+        totalElections: stats.totalElections, // keep previous if not provided
+        activeElections: stats.activeElections,
+        totalVotes: stats.totalVotes,
+        duplicates: data.duplicates || 0,
+        deceasedPending: data.deathRecords || 0,
+        revisionBatches: data.revisionBatches || 0,
+        grievancesPending: data.grievancesPending || 0,
+        bloTasksPending: data.bloTasksPending || 0,
+        suspiciousAddresses: stats.suspiciousAddresses,
+        epicGeneratedToday: data.epicGeneratedToday || 0,
       });
-
-      // Status distribution for pie chart
-      setStatusDistribution([
-        { name: 'Verified', value: verifiedCount },
-        { name: 'Pending', value: pendingCount },
-        { name: 'Flagged', value: duplicates.data.pagination?.total || 0 },
-      ]);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
@@ -115,15 +80,21 @@ export default function AdminDashboard() {
   };
 
   const fetchChartData = async () => {
-    // Mock data for demonstration - in production, fetch from API
-    setChartData([
-      { name: 'Jan', voters: 1200, verified: 800 },
-      { name: 'Feb', voters: 1900, verified: 1200 },
-      { name: 'Mar', voters: 3000, verified: 2100 },
-      { name: 'Apr', voters: 2800, verified: 2000 },
-      { name: 'May', voters: 3500, verified: 2800 },
-      { name: 'Jun', voters: 4200, verified: 3500 },
-    ]);
+    try {
+      const res = await adminService.getGraphs();
+      const data = res.data?.data || res.data || {};
+      const regs = (data.registrations || []).map((r: any) => ({
+        name: r.month || '',
+        voters: Number(r.count || 0),
+        verified: undefined
+      }));
+      setChartData(regs);
+      setStatusDistribution(data.verificationDistribution || []);
+    } catch (e) {
+      console.warn('Graphs unavailable, using placeholders');
+      setChartData([]);
+      setStatusDistribution([]);
+    }
   };
 
   const handleLogout = () => {
