@@ -40,10 +40,13 @@ const resolveDefaultBaseUrl = () => {
 
 const API_BASE_URL = resolveDefaultBaseUrl();
 
-if (!import.meta.env.VITE_API_URL && typeof window !== 'undefined') {
-  console.warn(
-    `[api] VITE_API_URL not set. Falling back to derived base URL: ${API_BASE_URL}.`
-  );
+if (typeof window !== 'undefined') {
+  console.log(`[API Config] Base URL: ${API_BASE_URL}`);
+  if (!import.meta.env.VITE_API_URL) {
+    console.warn(
+      `[API Config] VITE_API_URL not set. Using derived base URL: ${API_BASE_URL}`
+    );
+  }
 }
 
 // Ensure baseURL ends with /api but doesn't have double slashes
