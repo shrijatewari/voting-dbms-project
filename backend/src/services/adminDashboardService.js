@@ -39,7 +39,9 @@ class AdminDashboardService {
       revisionBatches,
       grievancesPending,
       bloTasksPending,
-      epicGeneratedToday
+      epicGeneratedToday,
+      reviewTasksPending,
+      addressFlagsOpen
     ] = await Promise.all([
       safeScalar('SELECT COUNT(*) AS c FROM voters'),
       safeScalar('SELECT COUNT(*) AS c FROM voters WHERE is_verified = 1'),
@@ -52,7 +54,9 @@ class AdminDashboardService {
       safeScalar('SELECT COUNT(*) AS c FROM revision_batches'),
       safeScalar(`SELECT COUNT(*) AS c FROM grievances WHERE status IN ('open','in_progress','reopened')`),
       safeScalar(`SELECT COUNT(*) AS c FROM blo_tasks WHERE status IN ('pending','in-progress')`),
-      safeScalar(`SELECT COUNT(*) AS c FROM voters WHERE DATE(created_at)=CURDATE() AND (application_status='epic_generated' OR 1=1)`)
+      safeScalar(`SELECT COUNT(*) AS c FROM voters WHERE DATE(created_at)=CURDATE() AND (application_status='epic_generated' OR 1=1)`),
+      safeScalar(`SELECT COUNT(*) AS c FROM review_tasks WHERE status IN ('open','in_progress')`),
+      safeScalar(`SELECT COUNT(*) AS c FROM address_cluster_flags WHERE status IN ('open','under_review')`)
     ]);
 
     return {
@@ -67,7 +71,9 @@ class AdminDashboardService {
       revisionBatches,
       grievancesPending,
       bloTasksPending,
-      epicGeneratedToday
+      epicGeneratedToday,
+      reviewTasksPending,
+      addressFlagsOpen
     };
   }
 
