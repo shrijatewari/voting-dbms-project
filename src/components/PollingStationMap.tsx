@@ -62,7 +62,7 @@ export default function PollingStationMap({ selectedStation, onStationSelect, fi
 
   const fetchStations = async () => {
     try {
-      const response = await pollingStationService.getAll(filters || {}, 1, 100);
+      const response = await pollingStationService.getAll(filters || {}, 1, 2000);
       // API returns: { success: true, stations: [...], pagination: {...} }
       const allStations = response.data?.stations || [];
       

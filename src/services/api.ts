@@ -147,8 +147,12 @@ export const documentService = {
 // Polling Stations
 export const pollingStationService = {
   create: (data: any) => api.post('/polling-stations', data),
-  getAll: (filters: any = {}, page = 1, limit = 10) => {
-    const params = new URLSearchParams({ page: page.toString(), limit: limit.toString(), ...filters });
+  getAll: (filters: any = {}, page = 1, limit = 2000) => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    if (filters.district) params.append('district', filters.district);
+    if (filters.state) params.append('state', filters.state);
     return api.get(`/polling-stations?${params}`);
   },
   getById: (id: number) => api.get(`/polling-stations/${id}`),

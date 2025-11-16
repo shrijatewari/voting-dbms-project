@@ -141,7 +141,7 @@ class PollingStationService {
   /**
    * Get all stations
    */
-  async getAllStations(page = 1, limit = 10, filters = {}) {
+  async getAllStations(page = 1, limit = 1000, filters = {}) {
     const connection = await pool.getConnection();
     try {
       const offset = (page - 1) * limit;
@@ -149,23 +149,33 @@ class PollingStationService {
       const params = [];
 
       if (filters.district) {
-        query += ' AND district = ?';
-        params.push(filters.district);
+        query += ' AND LOWER(district) LIKE LOWER(?)';
+        params.push(`%${filters.district}%`);
       }
 
       if (filters.state) {
-        query += ' AND state = ?';
-        params.push(filters.state);
+        query += ' AND LOWER(state) LIKE LOWER(?)';
+        params.push(`%${filters.state}%`);
       }
 
       query += ' ORDER BY station_name LIMIT ? OFFSET ?';
       params.push(limit, offset);
 
       const [rows] = await connection.query(query, params);
-      const [countRows] = await connection.query(
-        query.replace('SELECT *', 'SELECT COUNT(*) as total').replace('ORDER BY station_name LIMIT ? OFFSET ?', ''),
-        params.slice(0, -2)
-      );
+      
+      // Get total count for pagination
+      let countQuery = 'SELECT COUNT(*) as total FROM polling_stations WHERE 1=1';
+      const countParams = [];
+      if (filters.district) {
+        countQuery += ' AND LOWER(district) LIKE LOWER(?)';
+        countParams.push(`%${filters.district}%`);
+      }
+      if (filters.state) {
+        countQuery += ' AND LOWER(state) LIKE LOWER(?)';
+        countParams.push(`%${filters.state}%`);
+      }
+      
+      const [countRows] = await connection.query(countQuery, countParams);
 
       return {
         stations: rows,
