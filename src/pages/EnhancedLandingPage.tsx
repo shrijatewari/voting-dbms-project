@@ -19,7 +19,7 @@ export default function EnhancedLandingPage() {
     setVoterStatus(null);
     try {
       // Check database first - search for voter by Aadhaar
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/voters/search?aadhaar=${aadhaarNumber}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/voters?aadhaar=${aadhaarNumber}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

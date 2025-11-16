@@ -46,6 +46,18 @@ class VoterController {
 
   async getAllVoters(req, res, next) {
     try {
+      const aadhaar = req.query.aadhaar;
+      
+      // If Aadhaar search parameter provided, search by Aadhaar
+      if (aadhaar) {
+        const voter = await voterService.getVoterByAadhaar(aadhaar);
+        if (voter) {
+          return res.json({ success: true, data: [voter] });
+        } else {
+          return res.json({ success: true, data: [] });
+        }
+      }
+      
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const result = await voterService.getAllVoters(page, limit);
