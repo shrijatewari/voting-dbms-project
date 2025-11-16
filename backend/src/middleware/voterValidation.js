@@ -31,13 +31,24 @@ const validateVoterRegistration = (req, res, next) => {
     errors.push({ field: 'dob', message: 'Date of birth is required' });
   } else {
     const dobDate = new Date(dob);
-    const today = new Date();
-    if (dobDate > today) {
-      errors.push({ field: 'dob', message: 'Date of birth cannot be in the future' });
-    }
-    const age = today.getFullYear() - dobDate.getFullYear();
-    if (age < 18) {
-      errors.push({ field: 'dob', message: 'You must be at least 18 years old to register' });
+    if (Number.isNaN(dobDate.getTime())) {
+      errors.push({ field: 'dob', message: 'Invalid date of birth' });
+    } else {
+      const today = new Date();
+      if (dobDate > today) {
+        errors.push({ field: 'dob', message: 'Date of birth cannot be in the future' });
+      } else {
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const hasBirthdayPassed =
+          today.getMonth() > dobDate.getMonth() ||
+          (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+        if (!hasBirthdayPassed) {
+          age -= 1;
+        }
+        if (age < 18) {
+          errors.push({ field: 'dob', message: 'You must be at least 18 years old to register' });
+        }
+      }
     }
   }
 

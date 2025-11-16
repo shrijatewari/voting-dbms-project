@@ -60,6 +60,28 @@ export default function VoterRegistration() {
     if (!formData.dob) {
       setError('Date of birth is required');
       return false;
+    } else {
+      const dobDate = new Date(formData.dob);
+      if (Number.isNaN(dobDate.getTime())) {
+        setError('Please enter a valid date of birth');
+        return false;
+      }
+      const today = new Date();
+      if (dobDate > today) {
+        setError('Date of birth cannot be in the future');
+        return false;
+      }
+      let age = today.getFullYear() - dobDate.getFullYear();
+      const hasBirthdayPassed =
+        today.getMonth() > dobDate.getMonth() ||
+        (today.getMonth() === dobDate.getMonth() && today.getDate() >= dobDate.getDate());
+      if (!hasBirthdayPassed) {
+        age -= 1;
+      }
+      if (age < 18) {
+        setError('You must be at least 18 years old to register to vote');
+        return false;
+      }
     }
 
     if (!formData.aadhaar_number || !/^\d{12}$/.test(formData.aadhaar_number)) {

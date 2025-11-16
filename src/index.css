@@ -55,3 +55,53 @@ body {
   }
 }
 
+@keyframes shieldPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 18px 45px rgba(255, 255, 255, 0.35);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes drawTick {
+  from {
+    stroke-dashoffset: 80;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-shield {
+  animation: shieldPulse 2.4s ease-in-out infinite;
+}
+
+.animate-tick path {
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  animation: drawTick 1s ease forwards 0.15s;
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards 0.9s;
+}
+

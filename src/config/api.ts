@@ -1,6 +1,40 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const resolveDefaultBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL?.trim();
+  if (envUrl) {
+    return envUrl;
+  }
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    const apiPort = import.meta.env.VITE_API_PORT || '3000';
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isLanIp = /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+
+    if (isLocalhost) {
+      return `http://localhost:${apiPort}/api`;
+    }
+
+    if (isLanIp) {
+      const preferredProtocol = protocol === 'https:' ? 'https' : 'http';
+      return `${preferredProtocol}://${hostname}:${apiPort}/api`;
+    }
+
+    // Production fallback assumes a reverse proxy exposes /api on the same origin
+    return `${protocol}//${hostname}/api`;
+  }
+
+  return 'http://localhost:3000/api';
+};
+
+const API_BASE_URL = resolveDefaultBaseUrl();
+
+if (!import.meta.env.VITE_API_URL && typeof window !== 'undefined') {
+  console.warn(
+    `[api] VITE_API_URL not set. Falling back to derived base URL: ${API_BASE_URL}.`
+  );
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
