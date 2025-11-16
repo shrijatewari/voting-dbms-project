@@ -17,6 +17,22 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
   }, [voterId]);
 
   const checkCompletion = async () => {
+    // Check if user is admin before making request
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const role = (user.role || 'citizen').toLowerCase();
+        if (role !== 'citizen') {
+          // Admin users don't have voter profiles - skip check
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        // Continue if parsing fails
+      }
+    }
+    
     try {
       const response = await profileService.getCompletionStatus(voterId);
       
@@ -39,25 +55,23 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
         return;
       }
     } catch (error: any) {
-      console.error('Failed to check completion:', error);
-      // Don't show modal on error - might be admin user or network issue
-      const errorMsg = error.response?.data?.error || error.message || '';
+      // Silently handle errors - don't log or show modal
+      // Profile endpoints return 200 with null for admin users, so errors here are expected
       const status = error.response?.status;
+      const errorMsg = error.response?.data?.error || error.message || '';
       
-      // Don't show modal for:
+      // Don't show modal or log errors for:
       // - Admin users (200 with null data)
-      // - Network errors (might be temporary)
-      // - 401/403 (session expired - will be handled by interceptor)
-      if (status === 401 || status === 403) {
-        // Session expired - don't show modal, let interceptor handle it
+      // - 401/403 (handled by interceptor, but shouldn't happen for profile endpoints)
+      // - Any other errors (network issues, etc.)
+      if (status === 200 || status === 401 || status === 403 || 
+          errorMsg.includes('Admin users') || errorMsg.includes('No voter profile')) {
         setLoading(false);
         return;
       }
       
-      if (!errorMsg.includes('Admin users') && !errorMsg.includes('No voter profile') && status !== 200) {
-        // Only log actual errors, not admin user cases or successful null responses
-        console.warn('Profile completion check failed:', errorMsg);
-      }
+      // Only log unexpected errors
+      console.warn('Profile completion check failed:', errorMsg);
     } finally {
       setLoading(false);
     }

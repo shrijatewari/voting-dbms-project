@@ -78,18 +78,42 @@ api.interceptors.request.use((config) => {
 
 // Handle 401 errors globally
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Always allow 200 responses through, even for profile endpoints
+    return response;
+  },
   (error) => {
-    // Don't handle errors for profile/completion endpoints - they return 200 with null for admins
-    const url = error.config?.url || '';
-    if (url.includes('/health') || url.includes('/profile') || url.includes('/completion')) {
+    const url = error.config?.url || error.config?.baseURL + error.config?.url || '';
+    const status = error.response?.status;
+    
+    // NEVER show session expired for profile/completion endpoints - they return 200 with null for admins
+    // Also skip health checks
+    // Check both relative and absolute URLs
+    const isProfileEndpoint = url.includes('/profile') || url.includes('/completion');
+    const isHealthEndpoint = url.includes('/health');
+    
+    if (isHealthEndpoint || isProfileEndpoint) {
+      // Silently reject - don't trigger session expired for these
       return Promise.reject(error);
     }
     
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // Skip handling if status is 200 (shouldn't happen, but just in case)
+    if (status === 200) {
+      return Promise.reject(error);
+    }
+    
+    // Only handle 401/403 for actual authentication errors
+    if (status === 401 || status === 403) {
       // Check if error message indicates actual token expiration
-      const errorMsg = error.response?.data?.error || '';
-      if (errorMsg.includes('token') || errorMsg.includes('expired') || errorMsg.includes('Invalid') || errorMsg.includes('Unauthorized')) {
+      const errorMsg = (error.response?.data?.error || '').toLowerCase();
+      const isTokenError = errorMsg.includes('token') || 
+                          errorMsg.includes('expired') || 
+                          errorMsg.includes('invalid') || 
+                          errorMsg.includes('unauthorized') ||
+                          errorMsg.includes('access token required');
+      
+      // Only show session expired for actual token errors, not for other 401/403 errors
+      if (isTokenError) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
         // Don't redirect if we're already on login page
