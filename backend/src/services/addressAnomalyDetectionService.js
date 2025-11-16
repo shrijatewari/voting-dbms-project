@@ -179,7 +179,14 @@ class AddressAnomalyDetectionService {
   async getAddressFlags(filters = {}) {
     const connection = await pool.getConnection();
     try {
-      let query = 'SELECT * FROM address_cluster_flags WHERE 1=1';
+      let query = `
+        SELECT 
+          id, address_hash, normalized_address, region, district, state,
+          voter_count, risk_score, risk_level, surname_diversity_score,
+          dob_clustering_score, status, assigned_to, created_at, updated_at
+        FROM address_cluster_flags 
+        WHERE 1=1
+      `;
       const params = [];
 
       if (filters.status) {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import validationService from '../services/validationService';
 import api from '../config/api';
 
 interface Notification {

@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../config/api';
 
 export interface AddressComponents {
   house_number?: string;
@@ -50,6 +50,9 @@ export interface AddressFlag {
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   status: string;
   created_at: string;
+  district?: string;
+  state?: string;
+  ai_explanation?: string;
 }
 
 export interface ReviewTask {
@@ -63,6 +66,7 @@ export interface ReviewTask {
   flags: string[];
   voter_name?: string;
   aadhaar_number?: string;
+  ai_explanation?: string;
 }
 
 const validationService = {
