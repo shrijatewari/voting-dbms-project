@@ -377,29 +377,32 @@ export default function AdminDashboard() {
 
               {/* Key Metrics Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {metricCards.filter(card => {
-                  // Show all metrics - viewing is separate from actions
-                  // Only filter if user has NO permission to view the module at all
-                  if (card.id === 'duplicates' || card.id === 'duplicates-merged' || card.id === 'duplicates-ghost' || card.id === 'duplicates-rejected') {
-                    return hasPermission('duplicates.view'); // Show if can view duplicates
-                  }
-                  if (card.id === 'deceased') {
-                    return hasPermission('death_records.view');
-                  }
-                  if (card.id === 'revision') {
-                    return hasPermission('revision.view_flags');
-                  }
-                  if (card.id === 'grievances') {
-                    return hasPermission('grievances.view');
-                  }
-                  if (card.id === 'blo-tasks') {
-                    return hasPermission('blo_tasks.view');
-                  }
-                  if (card.id === 'epic') {
-                    return hasPermission('epic.view');
-                  }
-                  return true; // Show other metrics by default
-                }).map((card) => (
+                {(userRole === 'SUPERADMIN' || userRole === 'superadmin' 
+                  ? metricCards 
+                  : metricCards.filter(card => {
+                      // Show all metrics - viewing is separate from actions
+                      // Only filter if user has NO permission to view the module at all
+                      if (card.id === 'duplicates' || card.id === 'duplicates-merged' || card.id === 'duplicates-ghost' || card.id === 'duplicates-rejected') {
+                        return hasPermission('duplicates.view'); // Show if can view duplicates
+                      }
+                      if (card.id === 'deceased') {
+                        return hasPermission('death_records.view');
+                      }
+                      if (card.id === 'revision') {
+                        return hasPermission('revision.view_flags');
+                      }
+                      if (card.id === 'grievances') {
+                        return hasPermission('grievances.view');
+                      }
+                      if (card.id === 'blo-tasks') {
+                        return hasPermission('blo_tasks.view');
+                      }
+                      if (card.id === 'epic') {
+                        return hasPermission('epic.view');
+                      }
+                      return true; // Show other metrics by default
+                    })
+                ).map((card) => (
                   <Link
                     key={card.id}
                     to={card.link}
@@ -422,7 +425,8 @@ export default function AdminDashboard() {
                   </Link>
                 ))}
                 
-                {/* AI Services Card */}
+                {/* AI Services Card - SUPERADMIN always sees this */}
+                {(userRole === 'SUPERADMIN' || userRole === 'superadmin' || hasPermission('ai.view_logs')) && (
                 <Link
                   to="/admin/ai-services"
                   className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg hover:shadow-2xl transition-all p-6 border-l-4 border-purple-700 group text-white"
@@ -442,6 +446,7 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                 </Link>
+                )}
               </div>
 
               {/* Charts Section */}
