@@ -2,6 +2,16 @@ const profileService = require('../services/profileService');
 
 async function getProfile(req, res, next) {
   try {
+    // Check if user is admin - admins don't have voter profiles
+    const userRole = req.user?.role?.toLowerCase();
+    if (userRole && userRole !== 'citizen') {
+      return res.status(200).json({ 
+        success: true, 
+        data: null,
+        message: 'Admin users do not have voter profiles'
+      });
+    }
+    
     // Get voter ID from params, user token, or request body
     let voterId = null;
     if (req.params.id && req.params.id !== '') {
@@ -13,7 +23,11 @@ async function getProfile(req, res, next) {
     }
     
     if (!voterId || isNaN(voterId)) {
-      return res.status(401).json({ error: 'Invalid or expired token. Please log in again.' });
+      return res.status(200).json({ 
+        success: true, 
+        data: null,
+        message: 'No voter profile associated with this account'
+      });
     }
     
     const profile = await profileService.getProfile(voterId);
@@ -51,6 +65,16 @@ async function updateProfile(req, res, next) {
 
 async function getCompletionStatus(req, res, next) {
   try {
+    // Check if user is admin - admins don't have voter profiles
+    const userRole = req.user?.role?.toLowerCase();
+    if (userRole && userRole !== 'citizen') {
+      return res.status(200).json({ 
+        success: true, 
+        data: { completionPercentage: 0, completedSections: [] },
+        message: 'Admin users do not have voter profiles'
+      });
+    }
+    
     // Get voter ID from params, user token, or request body
     let voterId = null;
     if (req.params.id && req.params.id !== '') {
@@ -62,7 +86,11 @@ async function getCompletionStatus(req, res, next) {
     }
     
     if (!voterId || isNaN(voterId)) {
-      return res.status(401).json({ error: 'Invalid or expired token. Please log in again.' });
+      return res.status(200).json({ 
+        success: true, 
+        data: { completionPercentage: 0, completedSections: [] },
+        message: 'No voter profile associated with this account'
+      });
     }
     
     const status = await profileService.getCompletionStatus(voterId);

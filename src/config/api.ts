@@ -95,13 +95,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      // Only redirect if it's not a health check
-      if (!error.config?.url?.includes('/health')) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
-        // Don't redirect if we're already on login page
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+      // Only redirect if it's not a health check or profile endpoint
+      // Profile endpoints return 200 for admin users, so this shouldn't trigger
+      const url = error.config?.url || '';
+      if (!url.includes('/health') && !url.includes('/profile')) {
+        // Check if error message indicates actual token expiration
+        const errorMsg = error.response?.data?.error || '';
+        if (errorMsg.includes('token') || errorMsg.includes('expired') || errorMsg.includes('Invalid')) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          // Don't redirect if we're already on login page
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
       }
     }

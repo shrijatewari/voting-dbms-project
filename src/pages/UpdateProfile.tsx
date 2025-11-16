@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { profileService } from '../services/api';
 import BiometricCapture from '../components/BiometricCapture';
@@ -37,6 +38,7 @@ interface ProfileData {
 }
 
 export default function UpdateProfile() {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('personal');
   const [profile, setProfile] = useState<any>(null);
   const [formData, setFormData] = useState<ProfileData>({});
@@ -49,6 +51,21 @@ export default function UpdateProfile() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    // Check if user is admin - admins don't have voter profiles
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const role = (user.role || 'citizen').toLowerCase();
+        if (role !== 'citizen') {
+          // Admin users don't have voter profiles
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
     loadProfile();
   }, []);
 
@@ -62,6 +79,22 @@ export default function UpdateProfile() {
         return;
       }
 
+      // Check if user is admin - skip profile loading for admins
+      const userData = localStorage.getItem('user_data');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          const role = (user.role || 'citizen').toLowerCase();
+          if (role !== 'citizen') {
+            // Admin users don't have voter profiles - redirect to admin dashboard
+            navigate('/admin');
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+
       const [profileRes, completionRes] = await Promise.all([
         profileService.getProfile(),
         profileService.getCompletionStatus()
@@ -70,13 +103,46 @@ export default function UpdateProfile() {
       console.log('Profile loaded:', profileRes.data);
       console.log('Completion status:', completionRes.data);
       
-      if (profileRes.data?.success && profileRes.data?.data) {
-        setProfile(profileRes.data.data);
-        setFormData(profileRes.data.data);
+      // Handle admin users or users without voter profiles
+      if (profileRes.data?.success) {
+        if (profileRes.data?.data === null || profileRes.data?.message) {
+          // Admin user or no voter profile - redirect to appropriate dashboard
+          const userData = localStorage.getItem('user_data');
+          if (userData) {
+            try {
+              const user = JSON.parse(userData);
+              const role = (user.role || 'citizen').toLowerCase();
+              if (role !== 'citizen') {
+                navigate('/admin');
+                return;
+              }
+            } catch (e) {}
+          }
+          // Citizen without profile - show empty form
+          setProfile(null);
+          setFormData({});
+        } else {
+          setProfile(profileRes.data.data);
+          setFormData(profileRes.data.data);
+        }
       } else {
         console.error('Profile data not found:', profileRes.data);
         const errorMsg = profileRes.data?.error || 'Failed to load profile. Please try logging in again.';
-        alert(errorMsg);
+        // Don't show alert for admin users
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            const role = (user.role || 'citizen').toLowerCase();
+            if (role !== 'citizen') {
+              navigate('/admin');
+              return;
+            }
+          } catch (e) {}
+        }
+        if (!errorMsg.includes('Admin users') && !errorMsg.includes('No voter profile')) {
+          alert(errorMsg);
+        }
         if (errorMsg.includes('token') || errorMsg.includes('expired')) {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user_data');
@@ -86,18 +152,53 @@ export default function UpdateProfile() {
       
       if (completionRes.data?.success && completionRes.data?.data) {
         setCompletion(completionRes.data.data);
+      } else if (completionRes.data?.success && completionRes.data?.data === null) {
+        // Admin user - set empty completion
+        setCompletion({ completionPercentage: 0, completedSections: [] });
       }
     } catch (error: any) {
       console.error('Failed to load profile:', error);
       const errorMsg = error.response?.data?.error || error.message || 'Failed to load profile';
       
-      // Handle token expiration
-      if (errorMsg.includes('token') || errorMsg.includes('expired') || error.response?.status === 401) {
+      // Check if user is admin - admins don't have voter profiles
+      const userData = localStorage.getItem('user_data');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          const role = (user.role || 'citizen').toLowerCase();
+          if (role !== 'citizen') {
+            // Admin users don't have voter profiles - redirect to admin dashboard
+            navigate('/admin');
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
+      // Handle token expiration only for actual token errors
+      if ((errorMsg.includes('token') || errorMsg.includes('expired') || error.response?.status === 401) && 
+          !errorMsg.includes('Voter ID required') && !errorMsg.includes('Profile not found')) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
         alert('Your session has expired. Please log in again.');
         window.location.href = '/login';
         return;
+      }
+      
+      // Don't show error for admin users trying to access profile
+      if (errorMsg.includes('Voter ID required') || errorMsg.includes('Invalid or expired token')) {
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            const role = (user.role || 'citizen').toLowerCase();
+            if (role !== 'citizen') {
+              navigate('/admin');
+              return;
+            }
+          } catch (e) {}
+        }
       }
       
       alert(`Error loading profile: ${errorMsg}`);

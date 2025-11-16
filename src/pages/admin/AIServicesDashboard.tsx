@@ -225,7 +225,15 @@ export default function AIServicesDashboard() {
       if (error.response?.status === 401 || error.message?.includes('token')) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
-        alert('Your session has expired. Please log in again.');
+        // Only show session expired if it's actually a token error
+        if (error.response?.status === 401 && error.response?.data?.error?.includes('token')) {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          window.location.href = '/login';
+        } else {
+          console.error('AI service error:', error);
+        }
         window.location.href = '/login';
         return;
       }
@@ -262,7 +270,15 @@ export default function AIServicesDashboard() {
       if (error.response?.status === 401 || error.message?.includes('token')) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
-        alert('Your session has expired. Please log in again.');
+        // Only show session expired if it's actually a token error
+        if (error.response?.status === 401 && error.response?.data?.error?.includes('token')) {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          window.location.href = '/login';
+        } else {
+          console.error('AI service error:', error);
+        }
         window.location.href = '/login';
         return;
       }

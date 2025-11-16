@@ -16,42 +16,87 @@ export default function EnhancedCitizenDashboard({ user }: any) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user is admin - redirect to admin dashboard
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const role = (user.role || 'citizen').toLowerCase();
+        if (role !== 'citizen') {
+          navigate('/admin');
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      // Fetch voter data
-      const voterResponse = await voterService.getAll(1, 1);
-      if (voterResponse.data.voters?.length > 0) {
-        const voterData = voterResponse.data.voters[0];
-        setVoter(voterData);
-        
-        // Fetch application if exists
-        if (voterData.application_id) {
-          try {
-            const appResponse = await applicationService.getApplication(voterData.application_id);
-            setApplication(appResponse.data.data);
-          } catch (e) {}
+      // Get voter ID from user data if available
+      const userData = localStorage.getItem('user_data');
+      let voterId = null;
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          voterId = user.voter_id || user.id;
+        } catch (e) {}
+      }
+
+      // Fetch voter data - try to get current user's voter record
+      if (voterId) {
+        try {
+          const voterResponse = await voterService.getById(voterId);
+          if (voterResponse.data?.data || voterResponse.data) {
+            const voterData = voterResponse.data.data || voterResponse.data;
+            setVoter(voterData);
+            
+            // Fetch application if exists
+            if (voterData.application_id) {
+              try {
+                const appResponse = await applicationService.getApplication(voterData.application_id);
+                setApplication(appResponse.data.data);
+              } catch (e) {}
+            }
+            
+            // Fetch polling station
+            if (voterData.polling_station_id) {
+              try {
+                const stationResponse = await pollingStationService.getById(voterData.polling_station_id);
+                setPollingStation(stationResponse.data.data);
+              } catch (e) {}
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch voter data:', e);
         }
-        
-        // Fetch polling station
-        if (voterData.polling_station_id) {
-          try {
-            const stationResponse = await pollingStationService.getById(voterData.polling_station_id);
-            setPollingStation(stationResponse.data.data);
-          } catch (e) {}
+      } else {
+        // Fallback: try to get first voter (for testing)
+        try {
+          const voterResponse = await voterService.getAll(1, 1);
+          if (voterResponse.data.voters?.length > 0) {
+            const voterData = voterResponse.data.voters[0];
+            setVoter(voterData);
+          }
+        } catch (e) {
+          console.error('Failed to fetch voter list:', e);
         }
       }
 
       // Fetch active elections
-      const electionResponse = await electionService.getAll(1, 5);
-      setElections(electionResponse.data.elections || []);
+      try {
+        const electionResponse = await electionService.getAll(1, 5);
+        setElections(electionResponse.data.elections || []);
+      } catch (e) {
+        console.error('Failed to fetch elections:', e);
+      }
 
       // Fetch grievances
-      if (voter) {
+      if (voterId) {
         try {
-          const grievanceResponse = await grievanceService.getAll({ voter_id: voter.voter_id }, 1, 5);
+          const grievanceResponse = await grievanceService.getAll({ voter_id: voterId }, 1, 5);
           setGrievances(grievanceResponse.data.grievances || []);
         } catch (e) {}
       }

@@ -19,14 +19,28 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
   const checkCompletion = async () => {
     try {
       const response = await profileService.getCompletionStatus(voterId);
-      setCompletion(response.data.data);
       
-      // Show modal if completion is less than 80%
-      if (response.data.data.completionPercentage < 80) {
-        setShowModal(true);
+      // Handle admin users or users without profiles
+      if (response.data?.success && response.data?.data) {
+        setCompletion(response.data.data);
+        
+        // Show modal if completion is less than 80%
+        if (response.data.data.completionPercentage < 80) {
+          setShowModal(true);
+        }
+      } else {
+        // Admin user or no profile - don't show modal
+        setLoading(false);
+        return;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to check completion:', error);
+      // Don't show modal on error - might be admin user
+      const errorMsg = error.response?.data?.error || error.message || '';
+      if (!errorMsg.includes('Admin users') && !errorMsg.includes('No voter profile')) {
+        // Only log actual errors, not admin user cases
+        console.warn('Profile completion check failed:', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
