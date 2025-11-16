@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@react-spring/web": "^10.0.3",
     "@types/leaflet": "^1.9.21",
     "axios": "^1.6.2",
     "face-api.js": "^0.22.2",
+    "framer-motion": "^12.23.24",
     "i18next": "^25.6.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "leaflet": "^1.9.4",
@@ -22,6 +24,7 @@
     "react-image-crop": "^11.0.10",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^6.20.0",
+    "react-spring": "^10.0.3",
     "react-webcam": "^7.1.1",
     "recharts": "^3.4.1"
   },
