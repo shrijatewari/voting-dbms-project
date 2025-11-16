@@ -86,13 +86,13 @@ class SIEMService {
       
       // Login from unusual location
       const [unusualLocations] = await connection.query(
-        `SELECT user_id, source_ip, COUNT(*) as logins
+        `SELECT user_id, source_ip, COUNT(*) as logins, MAX(timestamp) as last_login
          FROM security_events
          WHERE event_type = 'login'
          AND timestamp > DATE_SUB(NOW(), INTERVAL 24 HOUR)
          GROUP BY user_id, source_ip
          HAVING logins = 1
-         ORDER BY timestamp DESC
+         ORDER BY last_login DESC
          LIMIT 50`
       );
       

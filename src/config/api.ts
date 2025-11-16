@@ -80,19 +80,31 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Don't handle errors for profile/completion endpoints - they return 200 with null for admins
+    const url = error.config?.url || '';
+    if (url.includes('/health') || url.includes('/profile') || url.includes('/completion')) {
+      return Promise.reject(error);
+    }
+    
     if (error.response?.status === 401 || error.response?.status === 403) {
-      // Only redirect if it's not a health check or profile endpoint
-      // Profile endpoints return 200 for admin users, so this shouldn't trigger
-      const url = error.config?.url || '';
-      if (!url.includes('/health') && !url.includes('/profile')) {
-        // Check if error message indicates actual token expiration
-        const errorMsg = error.response?.data?.error || '';
-        if (errorMsg.includes('token') || errorMsg.includes('expired') || errorMsg.includes('Invalid')) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_data');
-          // Don't redirect if we're already on login page
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
+      // Check if error message indicates actual token expiration
+      const errorMsg = error.response?.data?.error || '';
+      if (errorMsg.includes('token') || errorMsg.includes('expired') || errorMsg.includes('Invalid') || errorMsg.includes('Unauthorized')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        // Don't redirect if we're already on login page
+        if (window.location.pathname !== '/login') {
+          // Only show alert if not already showing one
+          if (!document.querySelector('.session-expired-alert')) {
+            const alert = document.createElement('div');
+            alert.className = 'session-expired-alert';
+            alert.textContent = 'Your session has expired. Please log in again.';
+            alert.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 16px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+            document.body.appendChild(alert);
+            setTimeout(() => {
+              alert.remove();
+              window.location.href = '/login';
+            }, 2000);
           }
         }
       }

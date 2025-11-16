@@ -104,10 +104,23 @@ class BLOTaskService {
       
       // If verification passed, update voter status
       if (status === 'completed' && task.task_type === 'field-verification') {
-        await connection.query(
-          'UPDATE voters SET is_verified = TRUE WHERE voter_id = ?',
-          [task.voter_id]
+        // Check if verified_at column exists before using it
+        const [columns] = await connection.query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'voters' AND COLUMN_NAME = 'verified_at'`
         );
+        
+        if (columns.length > 0) {
+          await connection.query(
+            'UPDATE voters SET is_verified = TRUE, verified_at = NOW() WHERE voter_id = ?',
+            [task.voter_id]
+          );
+        } else {
+          await connection.query(
+            'UPDATE voters SET is_verified = TRUE WHERE voter_id = ?',
+            [task.voter_id]
+          );
+        }
       }
       
       // Log audit event

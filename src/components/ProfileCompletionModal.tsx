@@ -21,11 +21,16 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
       const response = await profileService.getCompletionStatus(voterId);
       
       // Handle admin users or users without profiles
-      if (response.data?.success && response.data?.data) {
-        setCompletion(response.data.data);
+      if (response.data?.success && response.data?.data && response.data.data.completionPercentage !== undefined) {
+        const completionData = response.data.data;
+        // Ensure checkpoints exists
+        if (!completionData.checkpoints) {
+          completionData.checkpoints = {};
+        }
+        setCompletion(completionData);
         
         // Show modal if completion is less than 80%
-        if (response.data.data.completionPercentage < 80) {
+        if (completionData.completionPercentage < 80) {
           setShowModal(true);
         }
       } else {
@@ -35,10 +40,22 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
       }
     } catch (error: any) {
       console.error('Failed to check completion:', error);
-      // Don't show modal on error - might be admin user
+      // Don't show modal on error - might be admin user or network issue
       const errorMsg = error.response?.data?.error || error.message || '';
-      if (!errorMsg.includes('Admin users') && !errorMsg.includes('No voter profile')) {
-        // Only log actual errors, not admin user cases
+      const status = error.response?.status;
+      
+      // Don't show modal for:
+      // - Admin users (200 with null data)
+      // - Network errors (might be temporary)
+      // - 401/403 (session expired - will be handled by interceptor)
+      if (status === 401 || status === 403) {
+        // Session expired - don't show modal, let interceptor handle it
+        setLoading(false);
+        return;
+      }
+      
+      if (!errorMsg.includes('Admin users') && !errorMsg.includes('No voter profile') && status !== 200) {
+        // Only log actual errors, not admin user cases or successful null responses
         console.warn('Profile completion check failed:', errorMsg);
       }
     } finally {
@@ -52,7 +69,7 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
     return 'text-green-600';
   };
 
-  if (loading || !showModal) {
+  if (loading || !showModal || !completion) {
     return null;
   }
 
@@ -65,8 +82,9 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
     { key: 'biometrics', label: 'Biometric Registration', required: true },
   ];
 
+  const checkpoints = completion.checkpoints || {};
   const incompleteMandatory = mandatoryCheckpoints.filter(
-    cp => !completion.checkpoints[cp.key]
+    cp => !checkpoints[cp.key]
   );
 
   return (
@@ -116,7 +134,7 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
           <h3 className="font-bold text-gray-800 mb-4">Mandatory Requirements:</h3>
           <div className="space-y-3 mb-6">
             {mandatoryCheckpoints.map((cp) => {
-              const isCompleted = completion.checkpoints[cp.key];
+              const isCompleted = checkpoints[cp.key];
               return (
                 <div
                   key={cp.key}
