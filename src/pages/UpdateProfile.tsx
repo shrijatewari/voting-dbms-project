@@ -259,12 +259,20 @@ export default function UpdateProfile() {
       
       if (response.data.success) {
         setProfile(response.data.data);
-        await loadProfile();
+        await loadProfile(); // This reloads both profile and completion status
         
         // Track which section was saved
         if (section) {
           setLastSavedSection(section);
-          // Reload completion status to check if profile is 100% complete
+          // Clear saved indicator after 3 seconds
+          setTimeout(() => {
+            setLastSavedSection(null);
+          }, 3000);
+        }
+        
+        // Check if profile is 100% complete after reload
+        // Wait a bit for completion status to update
+        setTimeout(async () => {
           try {
             const voterId = profile.voter_id;
             const updatedCompletionRes = await profileService.getCompletionStatus(voterId);
@@ -272,31 +280,13 @@ export default function UpdateProfile() {
             
             if (updatedCompletion?.completionPercentage >= 100) {
               // Only show success alert when profile is 100% complete
-              setTimeout(() => {
-                alert('✅ Profile updated successfully! All sections are now complete.');
-              }, 300);
+              alert('✅ Profile updated successfully! All sections are now complete.');
             }
             // Otherwise, just show the checkmark in sidebar (no alert)
           } catch (e) {
             console.warn('Failed to check completion status:', e);
           }
-        } else {
-          // If no specific section, check completion
-          try {
-            const voterId = profile.voter_id;
-            const updatedCompletionRes = await profileService.getCompletionStatus(voterId);
-            const updatedCompletion = updatedCompletionRes.data?.data;
-            
-            if (updatedCompletion?.completionPercentage >= 100) {
-              setTimeout(() => {
-                alert('✅ Profile updated successfully! All sections are now complete.');
-              }, 300);
-            }
-            // Otherwise, no alert for partial updates
-          } catch (e) {
-            console.warn('Failed to check completion status:', e);
-          }
-        }
+        }, 500);
       } else {
         throw new Error(response.data.error || 'Update failed');
       }
