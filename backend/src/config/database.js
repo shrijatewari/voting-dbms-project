@@ -10,9 +10,10 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Set default lock wait timeout
-  connectTimeout: 10000,
-  acquireTimeout: 10000
+  // Increased timeouts for long-running operations
+  connectTimeout: 60000, // 60 seconds
+  acquireTimeout: 60000, // 60 seconds
+  timeout: 120000 // 120 seconds for query execution
 };
 
 // Create connection pool

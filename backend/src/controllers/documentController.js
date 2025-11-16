@@ -1,6 +1,14 @@
 const documentService = require('../services/documentService');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Configure multer with increased limits for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+    fieldSize: 10 * 1024 * 1024, // 10MB max field size
+  }
+});
 
 async function uploadDocument(req, res, next) {
   try {
