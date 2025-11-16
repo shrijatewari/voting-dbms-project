@@ -319,7 +319,7 @@ export default function VoterRegistration() {
       console.log('Starting registration with biometrics...');
       console.log('Email verified:', emailVerified, 'Mobile verified:', mobileVerified);
       
-      // Create voter with all details (including verified status)
+      // Create voter with all details (including verified status and password)
       console.log('Creating voter record with all details...');
       const voterResponse = await voterService.create({
         name: formData.name.trim(),
@@ -327,6 +327,7 @@ export default function VoterRegistration() {
         aadhaar_number: formData.aadhaar_number,
         email: formData.email.toLowerCase().trim(),
         mobile_number: formData.mobile_number,
+        password: formData.password, // Include password for user account creation
         father_name: formData.father_name.trim(),
         mother_name: formData.mother_name?.trim() || null,
         gender: formData.gender,
@@ -338,6 +339,8 @@ export default function VoterRegistration() {
         pin_code: formData.pin_code,
         email_verified: emailVerified,
         mobile_verified: mobileVerified,
+        face_embedding_hash: faceHash,
+        fingerprint_hash: fingerprintHash,
         is_verified: false,
       });
 
