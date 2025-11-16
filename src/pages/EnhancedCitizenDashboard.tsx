@@ -153,8 +153,22 @@ export default function EnhancedCitizenDashboard({ user }: any) {
 
   return (
     <div className="min-h-screen bg-gray-light">
-      {/* Profile Completion Modal */}
-      {voter && <ProfileCompletionModal voterId={voter.voter_id} />}
+      {/* Profile Completion Modal - Only show for citizen users */}
+      {voter && voter.voter_id && (() => {
+        const userData = localStorage.getItem('user_data');
+        try {
+          if (userData) {
+            const user = JSON.parse(userData);
+            const role = (user.role || 'citizen').toLowerCase();
+            if (role === 'citizen') {
+              return <ProfileCompletionModal voterId={voter.voter_id} />;
+            }
+          }
+        } catch (e) {
+          // If parsing fails, show modal anyway
+        }
+        return null;
+      })()}
       {/* Header with India Flag */}
       <header className="bg-white border-b-2 border-primary-navy shadow-sm">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">

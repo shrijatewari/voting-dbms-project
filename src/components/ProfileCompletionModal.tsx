@@ -13,6 +13,11 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
+    // Don't check completion if no voterId provided
+    if (!voterId) {
+      setLoading(false);
+      return;
+    }
     checkCompletion();
   }, [voterId]);
 
