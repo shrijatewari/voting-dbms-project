@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
+const biometricOptimizer = require('./biometricOptimizer');
 
 /**
  * Biometric Service
@@ -86,7 +87,7 @@ class BiometricService {
   /**
    * Check for similar face embeddings (cosine similarity)
    */
-  async checkSimilarFace(connection, faceEmbedding, voterId) {
+  async checkSimilarFace(connection, faceEmbedding, voterId, qualityScore = 0.8) {
     const [allBiometrics] = await connection.query(
       'SELECT b.face_embedding, v.voter_id, v.name, v.aadhaar_number FROM biometrics b JOIN voters v ON b.voter_id = v.voter_id WHERE b.face_embedding IS NOT NULL AND b.voter_id != ?',
       [voterId]
@@ -112,24 +113,52 @@ class BiometricService {
   /**
    * Check for similar fingerprint templates
    */
-  async checkSimilarFingerprint(connection, fingerprintTemplate, voterId) {
-    const [allBiometrics] = await connection.query(
-      'SELECT b.fingerprint_template, v.voter_id, v.name, v.aadhaar_number FROM biometrics b JOIN voters v ON b.voter_id = v.voter_id WHERE b.fingerprint_template IS NOT NULL AND b.voter_id != ?',
+  async checkSimilarFingerprint(connection, fingerprintTemplate, voterId, qualityScore = 0.8) {
+    // OPTIMIZED: Use minutiae-based comparison for fingerprints
+    const [existingBiometrics] = await connection.query(
+      `SELECT b.voter_id, b.fingerprint_template, b.fingerprint_hash, b.quality_score, v.name, v.aadhaar_number 
+       FROM biometrics b 
+       JOIN voters v ON b.voter_id = v.voter_id 
+       WHERE b.voter_id != ? AND b.fingerprint_template IS NOT NULL 
+       LIMIT 1000`,
       [voterId]
     );
 
-    for (const bio of allBiometrics) {
+    if (existingBiometrics.length === 0) return;
+
+    // Extract minutiae from current fingerprint
+    const currentMinutiae = biometricOptimizer.extractMinutiae(fingerprintTemplate);
+    const currentVector = biometricOptimizer.minutiaeToVector(currentMinutiae);
+
+    // Compare against all existing fingerprints
+    for (const bio of existingBiometrics) {
       try {
-        const storedTemplate = JSON.parse(bio.fingerprint_template || '[]');
-        if (storedTemplate.length === fingerprintTemplate.length) {
-          const similarity = this.cosineSimilarity(fingerprintTemplate, storedTemplate);
-          // Threshold: 0.7 (70% similarity) - very strict for fingerprints
-          if (similarity >= 0.7) {
-            throw new Error(`DUPLICATE FINGERPRINT DETECTED! Similarity: ${(similarity * 100).toFixed(2)}%. This fingerprint is too similar to Voter ID: ${bio.voter_id}, Name: ${bio.name}, Aadhaar: ${bio.aadhaar_number}`);
-          }
+        const storedTemplate = typeof bio.fingerprint_template === 'string' 
+          ? JSON.parse(bio.fingerprint_template) 
+          : bio.fingerprint_template;
+        
+        if (!Array.isArray(storedTemplate)) continue;
+        
+        // Extract minutiae from stored template
+        const storedMinutiae = biometricOptimizer.extractMinutiae(storedTemplate);
+        const similarity = biometricOptimizer.compareMinutiae(currentMinutiae, storedMinutiae);
+        
+        // Adaptive threshold based on quality
+        const storedQuality = bio.quality_score || 0.8;
+        const avgQuality = (qualityScore + storedQuality) / 2;
+        const adaptiveThreshold = 0.7 + (1 - avgQuality) * 0.15;
+        
+        if (similarity >= adaptiveThreshold) {
+          throw new Error(
+            `SIMILAR FINGERPRINT DETECTED! Fingerprint similarity: ${(similarity * 100).toFixed(1)}% ` +
+            `with Voter ID: ${bio.voter_id}, Name: ${bio.name || 'Unknown'}, ` +
+            `Aadhaar: ${bio.aadhaar_number || 'Unknown'}. This may be a duplicate registration.`
+          );
         }
-      } catch (err) {
-        if (err.message.includes('DUPLICATE FINGERPRINT')) throw err;
+      } catch (e) {
+        if (e.message.includes('SIMILAR FINGERPRINT')) {
+          throw e; // Re-throw duplicate detection errors
+        }
         // Continue if parsing fails
       }
     }
@@ -155,8 +184,14 @@ class BiometricService {
         throw new Error(`DUPLICATE FACE DETECTED! Exact hash match. This face already belongs to Voter ID: ${existing[0].voter_id}, Name: ${existing[0].name}, Aadhaar: ${existing[0].aadhaar_number}`);
       }
 
-      // Check for similar embeddings (cosine similarity)
-      await this.checkSimilarFace(connection, faceEmbedding, voterId);
+      // Calculate face quality score
+      const faceQuality = biometricOptimizer.calculateFaceQuality(faceEmbedding);
+      
+      // Normalize embedding for consistent comparison
+      const normalizedEmbedding = biometricOptimizer.normalizeEmbedding(faceEmbedding);
+      
+      // Check for similar embeddings (cosine similarity with quality threshold)
+      await this.checkSimilarFace(connection, normalizedEmbedding || faceEmbedding, voterId, faceQuality);
 
       // Encrypt embedding
       const encryptedData = this.encryptData(faceEmbedding);
@@ -211,9 +246,14 @@ class BiometricService {
         throw new Error(`DUPLICATE FINGERPRINT DETECTED! Exact hash match. This fingerprint already belongs to Voter ID: ${existing[0].voter_id}, Name: ${existing[0].name}, Aadhaar: ${existing[0].aadhaar_number}`);
       }
 
-      // Check for similar templates (cosine similarity)
-      await this.checkSimilarFingerprint(connection, fingerprintTemplate, voterId);
-
+      // Extract minutiae features for efficient comparison
+      const minutiae = biometricOptimizer.extractMinutiae(fingerprintTemplate);
+      const minutiaeVector = biometricOptimizer.minutiaeToVector(minutiae);
+      const fingerprintQuality = minutiae.quality_score || biometricOptimizer.calculateFaceQuality(fingerprintTemplate);
+      
+      // Check for similar fingerprints using optimized minutiae comparison
+      await this.checkSimilarFingerprint(connection, fingerprintTemplate, voterId, fingerprintQuality);
+      
       // Encrypt template
       const encryptedData = this.encryptData(fingerprintTemplate);
 
@@ -228,16 +268,18 @@ class BiometricService {
         ? existingBio[0].face_hash 
         : null;
       
+      // Store fingerprint template and minutiae vector for fast comparison
       await connection.query(
-        `INSERT INTO biometrics (voter_id, face_hash, fingerprint_hash, fingerprint_template, fingerprint_template_encrypted, is_fingerprint_verified, verified_at)
-         VALUES (?, ?, ?, ?, ?, TRUE, NOW())
+        `INSERT INTO biometrics (voter_id, face_hash, fingerprint_hash, fingerprint_template, fingerprint_template_encrypted, is_fingerprint_verified, quality_score, verified_at)
+         VALUES (?, ?, ?, ?, ?, TRUE, ?, NOW())
          ON DUPLICATE KEY UPDATE
          fingerprint_hash = VALUES(fingerprint_hash),
          fingerprint_template = VALUES(fingerprint_template),
          fingerprint_template_encrypted = VALUES(fingerprint_template_encrypted),
          is_fingerprint_verified = TRUE,
+         quality_score = COALESCE(quality_score, VALUES(quality_score)),
          verified_at = NOW()`,
-        [voterId, faceHashValue, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData]
+        [voterId, faceHashValue, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData, fingerprintQuality]
       );
 
       // Update voter table
@@ -430,11 +472,17 @@ class BiometricService {
 
       // Decrypt stored embedding
       const storedEmbedding = JSON.parse(biometrics[0].face_embedding || '[]');
+      const storedQuality = biometrics[0].quality_score || 0.8;
       
-      // Calculate cosine similarity
-      const similarity = this.cosineSimilarity(faceEmbedding, storedEmbedding);
-      const threshold = 0.6; // Standard threshold for face recognition
-      const verified = similarity >= threshold;
+      // Use optimized cosine similarity with quality-adjusted threshold
+      const similarity = biometricOptimizer.cosineSimilarity(faceEmbedding, storedEmbedding);
+      const currentQuality = biometricOptimizer.calculateFaceQuality(faceEmbedding);
+      const avgQuality = (storedQuality + currentQuality) / 2;
+      
+      // Adaptive threshold: lower quality = need higher similarity
+      const baseThreshold = 0.6;
+      const adjustedThreshold = baseThreshold + (1 - avgQuality) * 0.2;
+      const verified = biometricOptimizer.isMatch(faceEmbedding, storedEmbedding, currentQuality, storedQuality, baseThreshold);
 
       // Log verification attempt
       await connection.query(
@@ -469,11 +517,20 @@ class BiometricService {
       }
 
       const storedTemplate = JSON.parse(biometrics[0].fingerprint_template || '[]');
+      const storedQuality = biometrics[0].quality_score || 0.8;
       
-      // Calculate similarity (simplified - in production use minutiae matching)
-      const similarity = this.cosineSimilarity(fingerprintTemplate, storedTemplate);
-      const threshold = 0.7; // Higher threshold for fingerprints
-      const verified = similarity >= threshold;
+      // Extract minutiae and compare using optimized method
+      const storedMinutiae = biometricOptimizer.extractMinutiae(storedTemplate);
+      const currentMinutiae = biometricOptimizer.extractMinutiae(fingerprintTemplate);
+      const similarity = biometricOptimizer.compareMinutiae(storedMinutiae, currentMinutiae);
+      
+      const currentQuality = Math.max(storedMinutiae.quality_score || 0.7, currentMinutiae.quality_score || 0.7);
+      const avgQuality = (storedQuality + currentQuality) / 2;
+      
+      // Adaptive threshold for fingerprints (higher base threshold)
+      const baseThreshold = 0.7;
+      const adjustedThreshold = baseThreshold + (1 - avgQuality) * 0.15;
+      const verified = similarity >= adjustedThreshold;
 
       // Log verification attempt
       await connection.query(
@@ -497,6 +554,12 @@ class BiometricService {
    * Returns value between -1 and 1 (1 = identical, 0 = orthogonal, -1 = opposite)
    */
   cosineSimilarity(vecA, vecB) {
+    // Use optimized cosine similarity from biometricOptimizer
+    return biometricOptimizer.cosineSimilarity(vecA, vecB);
+  }
+  
+  // Legacy method - delegate to optimizer
+  legacyCosineSimilarity(vecA, vecB) {
     if (!vecA || !vecB || !Array.isArray(vecA) || !Array.isArray(vecB) || vecA.length !== vecB.length || vecA.length === 0) {
       return 0;
     }
