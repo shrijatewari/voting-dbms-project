@@ -26,7 +26,7 @@ export const voterService = {
 
 // Elections
 export const electionService = {
-  getAll: (page = 1, limit = 10) => api.get(`/elections?page=${page}&limit=${limit}`),
+  getAll: (page = 1, limit = 100) => api.get(`/elections?page=${page}&limit=${limit}`),
   getById: (id: number) => api.get(`/elections/${id}`),
   create: (data: any) => api.post('/elections', data),
   update: (id: number, data: any) => api.put(`/elections/${id}`, data),
@@ -59,8 +59,16 @@ export const voteService = {
 
 // Audit Logs
 export const auditLogService = {
-  getAll: (filters: any = {}, page = 1, limit = 10) => {
-    const params = new URLSearchParams({ page: page.toString(), limit: limit.toString(), ...filters });
+  getAll: (filters: any = {}, page = 1, limit = 20) => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    if (filters.entity_type) params.append('entity_type', filters.entity_type);
+    if (filters.action_type) params.append('action_type', filters.action_type);
+    if (filters.voter_id) params.append('voter_id', filters.voter_id.toString());
+    if (filters.election_id) params.append('election_id', filters.election_id.toString());
+    if (filters.start_date) params.append('start_date', filters.start_date);
+    if (filters.end_date) params.append('end_date', filters.end_date);
     return api.get(`/audit-logs?${params}`);
   },
   verifyChain: () => api.get('/audit-logs/verify-chain'),

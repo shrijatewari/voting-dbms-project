@@ -22,7 +22,20 @@ class GrievanceService {
   async createGrievance(grievanceData) {
     const connection = await pool.getConnection();
     try {
+      // Validate required fields
+      if (!grievanceData.issue_type || !grievanceData.subject || !grievanceData.description) {
+        throw new Error('Issue type, subject, and description are required');
+      }
+      
       const ticketNumber = this.generateTicketNumber();
+      
+      // Convert empty strings to null
+      const voterId = grievanceData.voter_id && grievanceData.voter_id.trim() !== '' 
+        ? parseInt(grievanceData.voter_id) || null 
+        : null;
+      const aadhaarNumber = grievanceData.aadhaar_number && grievanceData.aadhaar_number.trim() !== '' 
+        ? grievanceData.aadhaar_number.trim() 
+        : null;
       
       const [result] = await connection.query(
         `INSERT INTO grievances 
@@ -30,11 +43,11 @@ class GrievanceService {
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           ticketNumber,
-          grievanceData.voter_id || null,
-          grievanceData.aadhaar_number || null,
+          voterId,
+          aadhaarNumber,
           grievanceData.issue_type,
-          grievanceData.subject,
-          grievanceData.description,
+          grievanceData.subject.trim(),
+          grievanceData.description.trim(),
           grievanceData.priority || 'medium'
         ]
       );
