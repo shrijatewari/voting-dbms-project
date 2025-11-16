@@ -35,8 +35,18 @@ export default function LoginPage({ setUser, setIsAdmin }: any) {
       setIsAdmin(isAdminRole);
       navigate(isAdminRole ? '/admin' : '/dashboard');
     } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Login failed';
-      setError(msg);
+      console.error('Login error:', err);
+      let errorMsg = 'Login failed. Please try again.';
+      
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        errorMsg = 'Network error: Please check your internet connection and ensure the backend server is running.';
+      } else if (err.response?.data?.error) {
+        errorMsg = err.response.data.error;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     }
   };
 

@@ -287,6 +287,20 @@ function App() {
             </ProtectedRoute>
           }
         />
+        
+        {/* Catch-all route for 404 */}
+        <Route
+          path="*"
+          element={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
+                <p className="text-gray-600 mb-6">Page not found</p>
+                <a href="/" className="text-blue-600 hover:underline">Go back to home</a>
+              </div>
+            </div>
+          }
+        />
       </Routes>
     </Router>
   );

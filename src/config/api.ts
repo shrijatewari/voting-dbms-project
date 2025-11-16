@@ -11,6 +11,7 @@ const resolveDefaultBaseUrl = () => {
     const apiPort = import.meta.env.VITE_API_PORT || '3000';
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isLanIp = /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+    const isVercel = hostname.includes('vercel.app');
 
     if (isLocalhost) {
       return `http://localhost:${apiPort}/api`;
@@ -19,6 +20,14 @@ const resolveDefaultBaseUrl = () => {
     if (isLanIp) {
       const preferredProtocol = protocol === 'https:' ? 'https' : 'http';
       return `${preferredProtocol}://${hostname}:${apiPort}/api`;
+    }
+
+    // For Vercel deployments, use the backend URL from env or default backend
+    if (isVercel) {
+      // If backend is deployed separately, use that URL
+      // Otherwise, assume backend is at a known URL
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://your-backend-url.vercel.app';
+      return `${backendUrl}/api`;
     }
 
     // Production fallback assumes a reverse proxy exposes /api on the same origin

@@ -155,10 +155,19 @@ export default function VoterRegistration() {
       const otpCode = response.data?.data?.otp_code || response.data?.otp_code;
       if (otpCode) {
         setEmailOTPCode(otpCode);
+        setEmailOTPSent(true);
+      } else {
+        throw new Error('OTP code not received from server');
       }
-      setEmailOTPSent(true);
     } catch (err: any) {
-      setError('Failed to send email OTP: ' + (err.response?.data?.error || err.message));
+      console.error('Email OTP error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to send email OTP';
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        setError('Network error: Please check your internet connection and ensure the backend server is running.');
+      } else {
+        setError(`Failed to send email OTP: ${errorMsg}`);
+      }
+      setEmailOTPSent(false);
     } finally {
       setLoading(false);
     }
@@ -171,6 +180,7 @@ export default function VoterRegistration() {
     }
     try {
       setLoading(true);
+      setError('');
       const response = await otpService.verify(formData.email, 'email', otp);
       if (response.data?.success || response.data?.data?.verified) {
         setEmailVerified(true);
@@ -178,10 +188,16 @@ export default function VoterRegistration() {
         // Auto-send mobile OTP
         setTimeout(() => handleSendMobileOTP(), 500);
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError('Invalid OTP. Please check and try again.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
+      console.error('Email OTP verification error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Invalid OTP. Please try again.';
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        setError('Network error: Please check your internet connection and ensure the backend server is running.');
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -200,10 +216,19 @@ export default function VoterRegistration() {
       const otpCode = response.data?.data?.otp_code || response.data?.otp_code;
       if (otpCode) {
         setMobileOTPCode(otpCode);
+        setMobileOTPSent(true);
+      } else {
+        throw new Error('OTP code not received from server');
       }
-      setMobileOTPSent(true);
     } catch (err: any) {
-      setError('Failed to send mobile OTP: ' + (err.response?.data?.error || err.message));
+      console.error('Mobile OTP error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to send mobile OTP';
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        setError('Network error: Please check your internet connection and ensure the backend server is running.');
+      } else {
+        setError(`Failed to send mobile OTP: ${errorMsg}`);
+      }
+      setMobileOTPSent(false);
     } finally {
       setLoading(false);
     }
@@ -216,6 +241,7 @@ export default function VoterRegistration() {
     }
     try {
       setLoading(true);
+      setError('');
       const response = await otpService.verify(formData.mobile_number, 'mobile', otp);
       if (response.data?.success || response.data?.data?.verified) {
         setMobileVerified(true);
@@ -223,10 +249,16 @@ export default function VoterRegistration() {
         setStep('biometric');
         setShowBiometric(true);
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError('Invalid OTP. Please check and try again.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
+      console.error('Mobile OTP verification error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Invalid OTP. Please try again.';
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        setError('Network error: Please check your internet connection and ensure the backend server is running.');
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -330,9 +362,11 @@ export default function VoterRegistration() {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
-      let errorMessage = 'Registration failed';
+      let errorMessage = 'Registration failed. Please try again.';
 
-      if (err.response?.data) {
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        errorMessage = 'Network error: Please check your internet connection and ensure the backend server is running.';
+      } else if (err.response?.data) {
         if (err.response.data.details && Array.isArray(err.response.data.details)) {
           errorMessage = err.response.data.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
         } else if (err.response.data.error) {
