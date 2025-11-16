@@ -437,23 +437,6 @@ export default function UpdateProfile() {
     );
   }
 
-  const sections = [
-    { id: 'personal', name: 'Personal Details', icon: '👤' },
-    { id: 'contact', name: 'Contact Details', icon: '📞' },
-    { id: 'address', name: 'Address Details', icon: '📍' },
-    { id: 'identification', name: 'Identification', icon: '🆔' },
-    { id: 'demographic', name: 'Demographics', icon: '📊' },
-    { id: 'family', name: 'Family & Household', icon: '👨‍👩‍👧‍👦' },
-    { id: 'voter', name: 'Voter-Specific', icon: '🗳️' },
-    { id: 'documents', name: 'Documents', icon: '📄' },
-    { id: 'biometric', name: 'Biometrics', icon: '🔐' },
-    { id: 'nri', name: 'NRI Details', icon: '🌍' },
-    { id: 'security', name: 'Security Settings', icon: '🔒' },
-    { id: 'notifications', name: 'Notifications', icon: '🔔' },
-    { id: 'consent', name: 'Consent & Declarations', icon: '✅' },
-    { id: 'review', name: 'Review & Submit', icon: '📋' },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-light py-8 px-4">
       <div className="max-w-6xl mx-auto">
