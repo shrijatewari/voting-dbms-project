@@ -209,12 +209,16 @@ ensureUsersSeeded().catch(err => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
   console.log(`📖 Swagger UI: http://localhost:${PORT}/api-docs`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
 });
+
+// Set server timeout for long-running operations (2 minutes)
+server.timeout = 120000; // 120 seconds
+server.keepAliveTimeout = 65000; // 65 seconds (must be less than server.timeout)
 
 module.exports = app;
 
