@@ -114,6 +114,26 @@ api.interceptors.response.use(
       
       // Only show session expired for actual token errors, not for other 401/403 errors
       if (isTokenError) {
+        // Check if user is admin - admins might get 401/403 for profile endpoints but shouldn't trigger session expired
+        const userData = localStorage.getItem('user_data');
+        const isAdmin = userData && (() => {
+          try {
+            const user = JSON.parse(userData);
+            const role = (user.role || 'citizen').toLowerCase();
+            return role !== 'citizen';
+          } catch {
+            return false;
+          }
+        })();
+        
+        // Don't show session expired if we're on admin dashboard or user is admin
+        const isAdminPage = window.location.pathname.includes('/admin');
+        if (isAdminPage || isAdmin) {
+          // For admin users, 401/403 might be expected for certain endpoints
+          // Don't trigger session expired unless it's clearly a token issue
+          return Promise.reject(error);
+        }
+        
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
         // Don't redirect if we're already on login page
