@@ -200,9 +200,12 @@ export default function EnhancedCitizenDashboard({ user }: any) {
                 <p><span className="text-gray-600">EPIC:</span> <span className="font-semibold">{voter.epic_number}</span></p>
               )}
             </div>
-            <Link to={`/profile/${voter?.voter_id}`} className="mt-4 inline-block text-primary-navy hover:underline text-sm font-medium">
-              View Full Profile →
-            </Link>
+            <div className="flex gap-2 mt-4">
+              <Link to="/update-profile" className="btn-primary flex-1 text-center text-sm py-2">
+                ✏️ Update Profile
+              </Link>
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-2">Update your registration details anytime</p>
           </div>
 
           {/* Application Status Card */}
