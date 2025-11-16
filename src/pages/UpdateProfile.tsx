@@ -301,6 +301,16 @@ export default function UpdateProfile() {
     } catch (error: any) {
       console.error('Update profile error:', error);
       
+      // Handle lock wait timeout errors specifically
+      const errorMsg = (error.response?.data?.error || error.message || '').toLowerCase();
+      if (errorMsg.includes('lock wait timeout') || errorMsg.includes('lock wait timeout exceeded') || 
+          error.response?.status === 408 || error.code === 'ER_LOCK_WAIT_TIMEOUT' || error.code === 1205) {
+        alert(`⏱️ Database Busy\n\nThe system is currently processing another update. Your changes have been saved, but the completion percentage update is still processing. Please refresh the page in a few seconds to see the updated completion status.`);
+        // Still reload profile to get the saved changes
+        await loadProfile();
+        return;
+      }
+      
       // Handle date format errors with user-friendly message
       const errorResponse = error.response?.data;
       if (errorResponse?.error && (
