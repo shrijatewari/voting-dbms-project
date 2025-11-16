@@ -161,10 +161,10 @@ class BiometricService {
       // Encrypt embedding
       const encryptedData = this.encryptData(faceEmbedding);
 
-      // Insert or update biometric record
+      // Insert or update biometric record (face only - fingerprint_hash will be NULL)
       await connection.query(
-        `INSERT INTO biometrics (voter_id, face_hash, face_embedding, face_embedding_encrypted, is_face_verified, liveness_check_passed, verified_at)
-         VALUES (?, ?, ?, ?, TRUE, ?, NOW())
+        `INSERT INTO biometrics (voter_id, face_hash, fingerprint_hash, face_embedding, face_embedding_encrypted, is_face_verified, liveness_check_passed, verified_at)
+         VALUES (?, ?, NULL, ?, ?, TRUE, ?, NOW())
          ON DUPLICATE KEY UPDATE
          face_hash = VALUES(face_hash),
          face_embedding = VALUES(face_embedding),
@@ -217,17 +217,27 @@ class BiometricService {
       // Encrypt template
       const encryptedData = this.encryptData(fingerprintTemplate);
 
-      // Insert or update biometric record
+      // Insert or update biometric record (fingerprint only - face_hash may be NULL if not registered yet)
+      // Check if face_hash exists first
+      const [existingBio] = await connection.query(
+        'SELECT face_hash FROM biometrics WHERE voter_id = ?',
+        [voterId]
+      );
+      
+      const faceHashValue = existingBio.length > 0 && existingBio[0].face_hash 
+        ? existingBio[0].face_hash 
+        : null;
+      
       await connection.query(
-        `INSERT INTO biometrics (voter_id, fingerprint_hash, fingerprint_template, fingerprint_template_encrypted, is_fingerprint_verified, verified_at)
-         VALUES (?, ?, ?, ?, TRUE, NOW())
+        `INSERT INTO biometrics (voter_id, face_hash, fingerprint_hash, fingerprint_template, fingerprint_template_encrypted, is_fingerprint_verified, verified_at)
+         VALUES (?, ?, ?, ?, ?, TRUE, NOW())
          ON DUPLICATE KEY UPDATE
          fingerprint_hash = VALUES(fingerprint_hash),
          fingerprint_template = VALUES(fingerprint_template),
          fingerprint_template_encrypted = VALUES(fingerprint_template_encrypted),
          is_fingerprint_verified = TRUE,
          verified_at = NOW()`,
-        [voterId, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData]
+        [voterId, faceHashValue, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData]
       );
 
       // Update voter table
