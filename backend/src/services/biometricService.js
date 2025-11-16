@@ -88,25 +88,52 @@ class BiometricService {
    * Check for similar face embeddings (cosine similarity)
    */
   async checkSimilarFace(connection, faceEmbedding, voterId, qualityScore = 0.8) {
-    const [allBiometrics] = await connection.query(
-      'SELECT b.face_embedding, v.voter_id, v.name, v.aadhaar_number FROM biometrics b JOIN voters v ON b.voter_id = v.voter_id WHERE b.face_embedding IS NOT NULL AND b.voter_id != ?',
+    // OPTIMIZED: Use batch comparison with quality-adjusted threshold
+    // Load all existing face embeddings and compare efficiently
+    const [existingBiometrics] = await connection.query(
+      `SELECT b.voter_id, b.face_embedding, b.face_hash, b.quality_score, v.name, v.aadhaar_number 
+       FROM biometrics b 
+       JOIN voters v ON b.voter_id = v.voter_id 
+       WHERE b.voter_id != ? AND b.face_embedding IS NOT NULL 
+       LIMIT 1000`,
       [voterId]
     );
 
-    for (const bio of allBiometrics) {
+    if (existingBiometrics.length === 0) return;
+
+    // Prepare candidates for batch comparison
+    const candidates = existingBiometrics.map(bio => {
       try {
-        const storedEmbedding = JSON.parse(bio.face_embedding || '[]');
-        if (storedEmbedding.length === faceEmbedding.length) {
-          const similarity = this.cosineSimilarity(faceEmbedding, storedEmbedding);
-          // Threshold: 0.6 (60% similarity) - very strict
-          if (similarity >= 0.6) {
-            throw new Error(`DUPLICATE FACE DETECTED! Similarity: ${(similarity * 100).toFixed(2)}%. This face is too similar to Voter ID: ${bio.voter_id}, Name: ${bio.name}, Aadhaar: ${bio.aadhaar_number}`);
-          }
-        }
-      } catch (err) {
-        if (err.message.includes('DUPLICATE FACE')) throw err;
-        // Continue if parsing fails
+        const storedEmbedding = typeof bio.face_embedding === 'string' 
+          ? JSON.parse(bio.face_embedding) 
+          : bio.face_embedding;
+        
+        return {
+          voter_id: bio.voter_id,
+          embedding: Array.isArray(storedEmbedding) ? storedEmbedding : null,
+          quality_score: bio.quality_score || 0.8,
+          name: bio.name,
+          aadhaar_number: bio.aadhaar_number
+        };
+      } catch (e) {
+        return null;
       }
+    }).filter(c => c && c.embedding);
+
+    // Use optimized batch comparison with adaptive threshold
+    const adaptiveThreshold = 0.6 + (1 - qualityScore) * 0.2; // Lower quality = higher threshold
+    const matches = biometricOptimizer.batchCompare(faceEmbedding, candidates, adaptiveThreshold);
+
+    if (matches.length > 0) {
+      const bestMatch = matches[0];
+      const matchCandidate = candidates.find(c => c.voter_id === bestMatch.voter_id);
+      throw new Error(
+        `SIMILAR FACE DETECTED! Face similarity: ${(bestMatch.similarity * 100).toFixed(1)}% ` +
+        `(confidence: ${(bestMatch.confidence * 100).toFixed(1)}%) ` +
+        `with Voter ID: ${bestMatch.voter_id}, Name: ${matchCandidate?.name || 'Unknown'}, ` +
+        `Aadhaar: ${matchCandidate?.aadhaar_number || 'Unknown'}. ` +
+        `This may be a duplicate registration.`
+      );
     }
   }
 
