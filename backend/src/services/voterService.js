@@ -212,6 +212,23 @@ class VoterService {
     throw new Error('Failed to create voter after retries');
   }
 
+  async getVoterByAadhaar(aadhaarNumber) {
+    const connection = await pool.getConnection();
+    try {
+      const [voters] = await connection.query(
+        `SELECT voter_id, name, email, mobile_number, aadhaar_number, dob, 
+                epic_number, is_verified, polling_station, created_at
+         FROM voters 
+         WHERE aadhaar_number = ? 
+         LIMIT 1`,
+        [aadhaarNumber]
+      );
+      return voters[0] || null;
+    } finally {
+      connection.release();
+    }
+  }
+
   async getVoterById(voterId) {
     const connection = await pool.getConnection();
     try {

@@ -12,7 +12,15 @@ router.post('/', validateVoterRegistration, voterController.createVoter);
 router.get('/:id', requirePermission('voters.view'), voterController.getVoterById);
 
 // GET /voters - List voters (requires voters.view permission)
-router.get('/', requirePermission('voters.view'), voterController.getAllVoters);
+// GET /voters/search?aadhaar=XXX - Search by Aadhaar (public for landing page)
+router.get('/', (req, res, next) => {
+  // If searching by Aadhaar, allow public access
+  if (req.query.aadhaar) {
+    return voterController.getAllVoters(req, res, next);
+  }
+  // Otherwise require permission
+  return requirePermission('voters.view')(req, res, next);
+}, voterController.getAllVoters);
 
 // PUT /voters/:id - Update voter (requires voters.edit permission)
 router.put('/:id', requirePermission('voters.edit'), voterController.updateVoter);

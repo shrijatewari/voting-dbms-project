@@ -45,11 +45,37 @@ const MOCK_RESPONSES = {
     },
     confidence: 0.94
   },
-  fraud: {
-    is_fraud: false,
-    risk_score: 0.18,
-    reasons: ['Address history clean', 'Geo tag verified'],
-    cluster_id: 'CLUSTER-MOCK-001'
+  fraud: (address) => {
+    // Stricter fraud detection - flag suspicious addresses
+    const suspiciousPatterns = [
+      /^(x|y|z|test|demo|sample|fake|dummy|abc|xyz|xxx|yyy|zzz)/i,
+      /^(x|y|z|test|demo|sample|fake|dummy|abc|xyz|xxx|yyy|zzz)$/i,
+      /^[xyz]{1,3}$/i,
+      /test/i,
+      /demo/i,
+      /sample/i,
+      /fake/i,
+      /dummy/i
+    ];
+    
+    const addressStr = JSON.stringify(address).toLowerCase();
+    const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(addressStr));
+    
+    if (isSuspicious) {
+      return {
+        is_fraud: true,
+        risk_score: 0.95,
+        reasons: ['Suspicious address pattern detected', 'Address contains test/dummy data', 'Invalid address format'],
+        cluster_id: 'FRAUD-FLAG-001'
+      };
+    }
+    
+    return {
+      is_fraud: false,
+      risk_score: 0.18,
+      reasons: ['Address history clean', 'Geo tag verified'],
+      cluster_id: 'CLUSTER-MOCK-001'
+    };
   },
   cluster: {
     suspicious_clusters: [],
@@ -157,6 +183,11 @@ class AIClient {
       );
       return response.data;
     } catch (error) {
+      // Use function fallback for fraud detection
+      const fraudMock = MOCK_RESPONSES.fraud;
+      if (typeof fraudMock === 'function') {
+        return fraudMock(address);
+      }
       return fallback('fraud', error);
     }
   }

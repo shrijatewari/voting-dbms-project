@@ -16,18 +16,44 @@ export default function EnhancedLandingPage() {
       return;
     }
     setLoading(true);
+    setVoterStatus(null);
     try {
-      // In production, this would call a voter lookup API
-      // For now, we'll show a mock response
-      setVoterStatus({
-        name: 'Sample Voter',
-        aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
-        status: 'Verified',
-        epic_number: 'XX123456',
-        polling_station: 'Booth 001'
+      // Check database first - search for voter by Aadhaar
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/voters/search?aadhaar=${aadhaarNumber}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data && data.data.length > 0) {
+          const voter = data.data[0];
+          setVoterStatus({
+            name: voter.name,
+            aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
+            status: voter.is_verified ? 'Verified' : 'Pending Verification',
+            epic_number: voter.epic_number || 'Not Generated',
+            polling_station: voter.polling_station || 'Not Assigned'
+          });
+        } else {
+          // No voter found in database
+          setVoterStatus({
+            name: null,
+            aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
+            status: 'Not Registered',
+            epic_number: null,
+            polling_station: null
+          });
+        }
+      } else {
+        throw new Error('Failed to check voter status');
+      }
     } catch (error) {
-      alert('Error checking voter status');
+      console.error('Error checking voter status:', error);
+      alert('Error checking voter status. Please try again.');
+      setVoterStatus(null);
     } finally {
       setLoading(false);
     }
@@ -138,11 +164,34 @@ export default function EnhancedLandingPage() {
                     </button>
                   </div>
                   {voterStatus && (
-                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-left">
-                      <p className="text-sm font-semibold text-green-800 mb-2">✓ {t('voter_verified')}</p>
-                      <p className="text-xs text-gray-600">{t('name')}: {voterStatus.name}</p>
-                      <p className="text-xs text-gray-600">{t('aadhaar')}: {voterStatus.aadhaar_masked}</p>
-                      <p className="text-xs text-gray-600">{t('epic_number')}: {voterStatus.epic_number}</p>
+                    <div className={`mt-4 p-4 border rounded-lg text-left ${
+                      voterStatus.status === 'Verified' 
+                        ? 'bg-green-50 border-green-200' 
+                        : voterStatus.status === 'Not Registered'
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}>
+                      {voterStatus.status === 'Verified' ? (
+                        <>
+                          <p className="text-sm font-semibold text-green-800 mb-2">✓ {t('voter_verified')}</p>
+                          <p className="text-xs text-gray-600">{t('name')}: {voterStatus.name}</p>
+                          <p className="text-xs text-gray-600">{t('aadhaar')}: {voterStatus.aadhaar_masked}</p>
+                          <p className="text-xs text-gray-600">{t('epic_number')}: {voterStatus.epic_number}</p>
+                        </>
+                      ) : voterStatus.status === 'Not Registered' ? (
+                        <>
+                          <p className="text-sm font-semibold text-red-800 mb-2">✗ Not Registered</p>
+                          <p className="text-xs text-gray-600">This Aadhaar number is not registered in the voter database.</p>
+                          <p className="text-xs text-gray-600 mt-2">Please register to vote.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-semibold text-yellow-800 mb-2">⏳ Pending Verification</p>
+                          <p className="text-xs text-gray-600">{t('name')}: {voterStatus.name}</p>
+                          <p className="text-xs text-gray-600">{t('aadhaar')}: {voterStatus.aadhaar_masked}</p>
+                          <p className="text-xs text-gray-600">Status: Verification pending</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
