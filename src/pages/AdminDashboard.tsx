@@ -71,7 +71,8 @@ export default function AdminDashboard() {
 
   // Check if user has permission
   const hasPermission = (permission: string): boolean => {
-    if (userRole === 'SUPERADMIN') return true;
+    // SUPERADMIN bypasses all checks
+    if (userRole === 'SUPERADMIN' || userRole === 'superadmin') return true;
     if (userPermissions.includes(permission)) return true;
     // Check wildcard permissions
     for (const perm of userPermissions) {
@@ -272,10 +273,13 @@ export default function AdminDashboard() {
   ];
 
   // Filter modules based on user permissions
-  const modules = allModules.filter(module => {
-    if (!module.permission) return true; // Always show if no permission required
-    return hasPermission(module.permission);
-  });
+  // SUPERADMIN sees ALL modules
+  const modules = userRole === 'SUPERADMIN' || userRole === 'superadmin' 
+    ? allModules 
+    : allModules.filter(module => {
+        if (!module.permission) return true; // Always show if no permission required
+        return hasPermission(module.permission);
+      });
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
