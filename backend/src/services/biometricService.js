@@ -296,6 +296,7 @@ class BiometricService {
         : null;
       
       // Store fingerprint template and minutiae vector for fast comparison
+      // Explicitly set face_hash to NULL if not provided (required field)
       await connection.query(
         `INSERT INTO biometrics (voter_id, face_hash, fingerprint_hash, fingerprint_template, fingerprint_template_encrypted, is_fingerprint_verified, quality_score, verified_at)
          VALUES (?, ?, ?, ?, ?, TRUE, ?, NOW())
@@ -306,7 +307,7 @@ class BiometricService {
          is_fingerprint_verified = TRUE,
          quality_score = COALESCE(quality_score, VALUES(quality_score)),
          verified_at = NOW()`,
-        [voterId, faceHashValue, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData, fingerprintQuality]
+        [voterId, faceHashValue || null, fingerprintHash, JSON.stringify(fingerprintTemplate), encryptedData, fingerprintQuality]
       );
 
       // Update voter table
