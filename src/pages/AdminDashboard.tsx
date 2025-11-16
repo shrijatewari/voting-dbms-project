@@ -282,17 +282,31 @@ export default function AdminDashboard() {
   // Filter modules based on user permissions
   // SUPERADMIN sees ALL modules - FORCE IT
   const roleUpper = (userRole || '').toUpperCase();
-  const isSuperAdmin = roleUpper === 'SUPERADMIN' || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('SUPERADMIN');
+  const isSuperAdmin = roleUpper === 'SUPERADMIN' || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('SUPERADMIN') || roleUpper === 'ECI';
   
   console.log('🔍 Filtering modules - Role:', userRole, 'RoleUpper:', roleUpper, 'IsSuperAdmin:', isSuperAdmin, 'Total modules:', allModules.length);
+  console.log('🔍 User permissions:', userPermissions);
   
   // FORCE SUPERADMIN to see all modules - no filtering at all
-  const modules = isSuperAdmin ? allModules : allModules.filter(module => {
+  // Also check if user has admin1@election.gov.in email (SUPERADMIN)
+  const userData = localStorage.getItem('user_data');
+  let forceAllModules = isSuperAdmin;
+  if (userData) {
+    try {
+      const parsed = JSON.parse(userData);
+      if (parsed.email === 'admin1@election.gov.in') {
+        forceAllModules = true;
+        console.log('✅ Detected admin1@election.gov.in - FORCING ALL MODULES');
+      }
+    } catch (e) {}
+  }
+  
+  const modules = forceAllModules ? allModules : allModules.filter(module => {
     if (!module.permission) return true;
     return hasPermission(module.permission);
   });
   
-  console.log('✅ Final modules count:', modules.length, 'IsSuperAdmin:', isSuperAdmin);
+  console.log('✅ Final modules count:', modules.length, 'IsSuperAdmin:', isSuperAdmin, 'ForceAllModules:', forceAllModules);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
