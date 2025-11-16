@@ -10,14 +10,22 @@ class AuthController {
       }
       const user = await authService.loginWithEmail(email, password);
       const token = generateToken({
+        id: user.id,
         user_id: user.id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        permissions: user.permissions || []
       });
       return res.json({
         success: true,
         token,
-        user
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          permissions: user.permissions || []
+        }
       });
     } catch (error) {
       if (error.message === 'Email not registered' || error.message === 'Invalid credentials') {

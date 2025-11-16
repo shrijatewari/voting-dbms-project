@@ -13,10 +13,24 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'default_secret', (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'default_secret', async (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
+    
+    // Load fresh role and permissions from database if not in token
+    if (user.id && (!user.permissions || user.permissions.length === 0)) {
+      try {
+        const rbacService = require('../services/rbacService');
+        const roleInfo = await rbacService.getUserRoleAndPermissions(user.id);
+        user.role = roleInfo.role;
+        user.permissions = roleInfo.permissions;
+      } catch (e) {
+        // If RBAC service fails, use token data
+        console.warn('Failed to load RBAC data:', e.message);
+      }
+    }
+    
     req.user = user;
     // Allow multiple sessions - no session restrictions
     next();

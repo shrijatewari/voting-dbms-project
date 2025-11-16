@@ -13,6 +13,35 @@ export default function VoterManagement() {
   const [editForm, setEditForm] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [userRole, setUserRole] = useState<string>('');
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUserRole((parsed.role || 'CITIZEN').toUpperCase());
+        setUserPermissions(parsed.permissions || []);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+  }, []);
+
+  const hasPermission = (permission: string): boolean => {
+    if (userRole === 'SUPERADMIN') return true;
+    if (userPermissions.includes(permission)) return true;
+    for (const perm of userPermissions) {
+      if (perm.endsWith('.*')) {
+        const prefix = perm.replace('.*', '');
+        if (permission.startsWith(prefix + '.')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
 
   useEffect(() => {
     fetchVoters();
@@ -218,12 +247,19 @@ export default function VoterManagement() {
                           >
                             View
                           </Link>
-                          <button
-                            onClick={() => setSelectedVoter(voter)}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                          >
-                            Edit
-                          </button>
+                          {hasPermission('voters.edit') && (
+                            <button
+                              onClick={() => setSelectedVoter(voter)}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {!hasPermission('voters.edit') && (
+                            <span className="text-gray-400 text-xs" title="Permission Denied: Contact District Election Officer">
+                              Edit
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>

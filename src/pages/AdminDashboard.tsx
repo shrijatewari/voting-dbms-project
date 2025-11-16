@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeModule, setActiveModule] = useState('overview');
+  const [userRole, setUserRole] = useState<string>('');
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [stats, setStats] = useState({
     totalVoters: 0,
     verifiedVoters: 0,
@@ -52,9 +54,41 @@ export default function AdminDashboard() {
   const [aiHealth, setAIHealth] = useState<any>({});
 
   useEffect(() => {
+    // Load user role and permissions
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUserRole((parsed.role || 'CITIZEN').toUpperCase());
+        setUserPermissions(parsed.permissions || []);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
     fetchStats();
     fetchChartData();
   }, []);
+
+  // Check if user has permission
+  const hasPermission = (permission: string): boolean => {
+    if (userRole === 'SUPERADMIN') return true;
+    if (userPermissions.includes(permission)) return true;
+    // Check wildcard permissions
+    for (const perm of userPermissions) {
+      if (perm.endsWith('.*')) {
+        const prefix = perm.replace('.*', '');
+        if (permission.startsWith(prefix + '.')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Check if user has any of the permissions
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    return permissions.some(p => hasPermission(p));
+  };
 
   const fetchStats = async () => {
     try {
@@ -200,24 +234,32 @@ export default function AdminDashboard() {
     },
   ];
 
-  const modules = [
-    { id: 'overview', name: 'Dashboard Overview', icon: '📊', path: '/admin' },
-    { id: 'ai', name: 'AI Services', icon: '🤖', path: '/admin/ai-services' },
-    { id: 'voters', name: 'Voter Management', icon: '👥', path: '/admin/voters' },
-    { id: 'revision', name: 'Roll Revision', icon: '📋', path: '/admin/revision' },
-    { id: 'duplicates', name: 'Duplicate Detection', icon: '🔍', path: '/admin/duplicates' },
-    { id: 'deceased', name: 'Death Record Sync', icon: '⚰️', path: '/admin/death-records' },
-    { id: 'blo', name: 'BLO Field Verification', icon: '📍', path: '/admin/blo-tasks' },
-    { id: 'grievances', name: 'Grievance Management', icon: '📝', path: '/admin/grievances' },
-    { id: 'address', name: 'Address Analytics', icon: '🗺️', path: '/admin/address-clusters' },
-    { id: 'documents', name: 'Document Verification', icon: '📄', path: '/admin/documents' },
-    { id: 'biometric', name: 'Biometric Operations', icon: '🔐', path: '/admin/biometric' },
-    { id: 'communications', name: 'Official Communications', icon: '📢', path: '/admin/communications' },
-    { id: 'security', name: 'Security & Audit', icon: '🛡️', path: '/admin/security' },
-    { id: 'multilingual', name: 'Content Management', icon: '🌐', path: '/admin/content' },
-    { id: 'elections', name: 'Election Management', icon: '🗳️', path: '/admin/elections' },
-    { id: 'settings', name: 'System Settings', icon: '⚙️', path: '/admin/settings' },
+  // Define all modules with their required permissions
+  const allModules = [
+    { id: 'overview', name: 'Dashboard Overview', icon: '📊', path: '/admin', permission: 'dashboard.view' },
+    { id: 'ai', name: 'AI Services', icon: '🤖', path: '/admin/ai-services', permission: 'ai.view_logs' },
+    { id: 'voters', name: 'Voter Management', icon: '👥', path: '/admin/voters', permission: 'voters.view' },
+    { id: 'revision', name: 'Roll Revision', icon: '📋', path: '/admin/revision', permission: 'revision.view_flags' },
+    { id: 'duplicates', name: 'Duplicate Detection', icon: '🔍', path: '/admin/duplicates', permission: 'duplicates.view' },
+    { id: 'deceased', name: 'Death Record Sync', icon: '⚰️', path: '/admin/death-records', permission: 'death_records.view' },
+    { id: 'blo', name: 'BLO Field Verification', icon: '📍', path: '/admin/blo-tasks', permission: 'blo_tasks.view' },
+    { id: 'grievances', name: 'Grievance Management', icon: '📝', path: '/admin/grievances', permission: 'grievances.view' },
+    { id: 'address', name: 'Address Analytics', icon: '🗺️', path: '/admin/address-clusters', permission: 'voters.view' },
+    { id: 'documents', name: 'Document Verification', icon: '📄', path: '/admin/documents', permission: 'documents.view_ocr' },
+    { id: 'biometric', name: 'Biometric Operations', icon: '🔐', path: '/admin/biometric', permission: 'biometric.view' },
+    { id: 'epic', name: 'EPIC Management', icon: '🆔', path: '/admin/epic', permission: 'epic.view' },
+    { id: 'communications', name: 'Official Communications', icon: '📢', path: '/admin/communications', permission: 'voters.view' },
+    { id: 'security', name: 'Security & Audit', icon: '🛡️', path: '/admin/security', permission: 'security.view' },
+    { id: 'multilingual', name: 'Content Management', icon: '🌐', path: '/admin/content', permission: 'settings.view' },
+    { id: 'elections', name: 'Election Management', icon: '🗳️', path: '/admin/elections', permission: 'voters.view' },
+    { id: 'settings', name: 'System Settings', icon: '⚙️', path: '/admin/settings', permission: 'settings.view' },
   ];
+
+  // Filter modules based on user permissions
+  const modules = allModules.filter(module => {
+    if (!module.permission) return true; // Always show if no permission required
+    return hasPermission(module.permission);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -298,9 +340,48 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
+              {/* Role Badge */}
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-blue-100 px-4 py-2 rounded-lg">
+                    <span className="text-sm font-medium text-blue-800">Role: </span>
+                    <span className="text-sm font-bold text-blue-900">{userRole || 'Loading...'}</span>
+                  </div>
+                  {userPermissions.length > 0 && (
+                    <div className="text-xs text-gray-500">
+                      {userPermissions.length} permissions
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Key Metrics Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {metricCards.map((card) => (
+                {metricCards.filter(card => {
+                  // Filter metrics based on permissions
+                  if (card.id === 'duplicates-merged' || card.id === 'duplicates-ghost' || card.id === 'duplicates-rejected') {
+                    return hasPermission('duplicates.resolve');
+                  }
+                  if (card.id === 'duplicates') {
+                    return hasPermission('duplicates.view');
+                  }
+                  if (card.id === 'deceased') {
+                    return hasPermission('death_records.view');
+                  }
+                  if (card.id === 'revision') {
+                    return hasPermission('revision.view_flags');
+                  }
+                  if (card.id === 'grievances') {
+                    return hasPermission('grievances.view');
+                  }
+                  if (card.id === 'blo-tasks') {
+                    return hasPermission('blo_tasks.view');
+                  }
+                  if (card.id === 'epic') {
+                    return hasPermission('epic.view');
+                  }
+                  return true; // Show other metrics by default
+                }).map((card) => (
                   <Link
                     key={card.id}
                     to={card.link}

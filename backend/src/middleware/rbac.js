@@ -1,28 +1,46 @@
 const { authenticateToken } = require('./auth');
+const pool = require('../config/database');
 
 /**
  * Role-Based Access Control (RBAC) Middleware
- * Implements tiered access control for different officer levels
+ * Implements comprehensive RBAC with roles and permissions
  * 
  * Role Hierarchy (highest to lowest):
- * 1. eci - Election Commission of India (Full access)
- * 2. ceo - Chief Electoral Officer (State level)
- * 3. deo - District Election Officer (District level)
- * 4. ero - Electoral Registration Officer (Constituency level)
- * 5. blo - Booth Level Officer (Booth level)
- * 6. admin - General Admin (Limited admin access)
- * 7. citizen - Citizen/Voter (Public access only)
+ * 1. SUPERADMIN - Full system access
+ * 2. CEO - Chief Electoral Officer (State level)
+ * 3. DEO - District Election Officer (District level)
+ * 4. ERO - Electoral Registration Officer (Constituency level)
+ * 5. CRO - Chief Returning Officer
+ * 6. DOC_VERIFIER - Document Verification Officer
+ * 7. AI_AUDITOR - AI Auditor
+ * 8. BLO - Booth Level Officer
+ * 9. PRESIDING_OFFICER - Presiding Officer
+ * 10. HELPDESK - Helpdesk Officer
+ * 11. VIEW_ONLY - Read-only access
+ * 12. citizen - Citizen/Voter (Public access only)
  */
 
-// Define role hierarchy and permissions
+// Legacy role hierarchy for backward compatibility
 const ROLE_HIERARCHY = {
-  eci: 7,    // Highest level - full system access
-  ceo: 6,    // State level - can manage districts
-  deo: 5,    // District level - can manage constituencies
-  ero: 4,    // Constituency level - can manage booths
-  blo: 3,    // Booth level - limited to assigned booth
-  admin: 2,  // General admin - limited admin functions
-  citizen: 1 // Lowest level - public access only
+  SUPERADMIN: 10,
+  CEO: 9,
+  DEO: 8,
+  ERO: 7,
+  CRO: 7,
+  DOC_VERIFIER: 6,
+  AI_AUDITOR: 6,
+  BLO: 5,
+  PRESIDING_OFFICER: 5,
+  HELPDESK: 4,
+  VIEW_ONLY: 1,
+  citizen: 1,
+  // Legacy mappings
+  eci: 10,
+  ceo: 9,
+  deo: 8,
+  ero: 7,
+  blo: 5,
+  admin: 8
 };
 
 // Define permissions for each role
@@ -167,9 +185,22 @@ function requireRole(...allowedRoles) {
   return [
     authenticateToken,
     (req, res, next) => {
-      const userRole = req.user?.role?.toLowerCase() || 'citizen';
+      const userRole = (req.user?.role || 'citizen').toUpperCase();
+      const allowedRolesUpper = allowedRoles.map(r => r.toUpperCase());
       
-      if (!allowedRoles.includes(userRole)) {
+      // Also check legacy role mappings
+      const roleMappings = {
+        'ECI': 'SUPERADMIN',
+        'CEO': 'CEO',
+        'DEO': 'DEO',
+        'ERO': 'ERO',
+        'BLO': 'BLO',
+        'ADMIN': 'DEO'
+      };
+      
+      const mappedRole = roleMappings[userRole] || userRole;
+      
+      if (!allowedRolesUpper.includes(userRole) && !allowedRolesUpper.includes(mappedRole)) {
         return res.status(403).json({
           error: 'Access denied',
           message: `This endpoint requires one of the following roles: ${allowedRoles.join(', ')}`,
@@ -206,19 +237,53 @@ function requireMinimumRole(minimumRole) {
 }
 
 /**
- * Require specific permission
+ * Require specific permission (database-backed)
  */
 function requirePermission(permission) {
   return [
     authenticateToken,
-    (req, res, next) => {
-      const userRole = req.user?.role?.toLowerCase() || 'citizen';
+    async (req, res, next) => {
+      const userId = req.user?.id || req.user?.user_id;
+      const userRole = req.user?.role?.toUpperCase() || 'CITIZEN';
+      const userPermissions = req.user?.permissions || [];
       
-      if (!hasPermission(userRole, permission)) {
+      // Check if user has permission in token
+      let hasPerm = userPermissions.includes(permission);
+      
+      // Check wildcard permissions
+      if (!hasPerm) {
+        for (const perm of userPermissions) {
+          if (perm.endsWith('.*')) {
+            const prefix = perm.replace('.*', '');
+            if (permission.startsWith(prefix + '.')) {
+              hasPerm = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Fallback to legacy permission check
+      if (!hasPerm) {
+        hasPerm = hasPermission(userRole, permission);
+      }
+      
+      // If still no permission, check database
+      if (!hasPerm && userId) {
+        try {
+          const rbacService = require('../services/rbacService');
+          hasPerm = await rbacService.checkPermission(userId, permission);
+        } catch (e) {
+          console.warn('Failed to check permission from DB:', e.message);
+        }
+      }
+      
+      if (!hasPerm) {
         return res.status(403).json({
           error: 'Access denied',
           message: `This endpoint requires permission: ${permission}`,
-          yourRole: userRole
+          yourRole: userRole,
+          yourPermissions: userPermissions
         });
       }
       

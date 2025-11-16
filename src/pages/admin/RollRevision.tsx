@@ -7,6 +7,35 @@ export default function RollRevision() {
   const [loading, setLoading] = useState(false);
   const [dryRunMode, setDryRunMode] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUserRole((parsed.role || 'CITIZEN').toUpperCase());
+        setUserPermissions(parsed.permissions || []);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+  }, []);
+
+  const hasPermission = (permission: string): boolean => {
+    if (userRole === 'SUPERADMIN') return true;
+    if (userPermissions.includes(permission)) return true;
+    for (const perm of userPermissions) {
+      if (perm.endsWith('.*')) {
+        const prefix = perm.replace('.*', '');
+        if (permission.startsWith(prefix + '.')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
 
   useEffect(() => {
     fetchBatches();
@@ -71,13 +100,23 @@ export default function RollRevision() {
         {/* Action Buttons */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex space-x-4">
-            <button
-              onClick={handleDryRun}
-              disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-            >
-              🔄 Run Dry Revision
-            </button>
+            {hasPermission('revision.dry_run') ? (
+              <button
+                onClick={handleDryRun}
+                disabled={loading}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+              >
+                🔄 Run Dry Revision
+              </button>
+            ) : (
+              <button
+                disabled
+                className="px-6 py-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+                title="Permission Denied: Contact District Election Officer"
+              >
+                🔄 Run Dry Revision
+              </button>
+            )}
             <button
               onClick={fetchBatches}
               className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
@@ -159,13 +198,23 @@ export default function RollRevision() {
                     </div>
                     <div className="flex space-x-2">
                       {batch.status === 'draft' && (
-                        <button
-                          onClick={() => handleCommit(batch.batch_id)}
-                          disabled={loading}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
-                        >
-                          Commit
-                        </button>
+                        hasPermission('revision.commit') ? (
+                          <button
+                            onClick={() => handleCommit(batch.batch_id)}
+                            disabled={loading}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
+                          >
+                            Commit
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm"
+                            title="Permission Denied: Only CEO and SuperAdmin can commit revisions"
+                          >
+                            Commit
+                          </button>
+                        )
                       )}
                       <button
                         onClick={() => setSelectedBatch(batch)}
