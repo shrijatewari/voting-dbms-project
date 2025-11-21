@@ -61,13 +61,25 @@ class NameValidationService {
           /^fake/i,
           /^dummy/i,
           /^xyz/i,
-          /^abc/i
+          /^abc/i,
+          /^[a-z]{1,2}[a-z]{1,2}[a-z]{1,2}[a-z]{1,2}$/i  // Pattern like "dfojgoidf"
         ];
 
         for (const pattern of suspiciousPatterns) {
           if (pattern.test(token)) {
             return { valid: false, reason: 'Name contains suspicious pattern' };
           }
+        }
+        
+        // Enhanced: Check for random-looking strings (like "dfojgoidf")
+        // If token has no vowels and length > 3, reject
+        if (!/[aeiouAEIOU]/.test(token) && token.length > 3) {
+          return { valid: false, reason: 'Name contains invalid characters (no vowels)' };
+        }
+        
+        // Check for excessive consonant clusters
+        if (/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{4,}/.test(token)) {
+          return { valid: false, reason: 'Name contains invalid consonant sequence' };
         }
       }
     }
@@ -101,7 +113,7 @@ class NameValidationService {
   }
 
   /**
-   * Check phonetic sanity
+   * Check phonetic sanity - Enhanced to detect random character strings
    */
   checkPhoneticSanity(name) {
     const tokens = name.trim().split(/\s+/);
@@ -109,24 +121,79 @@ class NameValidationService {
     for (const token of tokens) {
       if (token.length < 2) continue;
 
+      const lowerToken = token.toLowerCase();
+      
       // Check if token has at least one consonant
-      const hasConsonant = /[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]/.test(token);
-      const hasVowel = /[aeiouAEIOU]/.test(token);
+      const hasConsonant = /[bcdfghjklmnpqrstvwxyz]/.test(lowerToken);
+      const hasVowel = /[aeiou]/.test(lowerToken);
 
       if (!hasConsonant) {
         return { valid: false, reason: 'Name token lacks consonants' };
       }
 
-      if (!hasVowel && token.length > 2) {
-        return { valid: false, reason: 'Name token lacks vowels' };
+      // CRITICAL: Names without vowels are almost always invalid (except very short ones)
+      if (!hasVowel && token.length > 3) {
+        return { valid: false, reason: 'Name contains invalid pattern (no vowels)' };
       }
 
       // Check vowel-to-consonant ratio
-      const vowelCount = (token.match(/[aeiouAEIOU]/g) || []).length;
-      const consonantCount = (token.match(/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]/g) || []).length;
+      const vowelCount = (lowerToken.match(/[aeiou]/g) || []).length;
+      const consonantCount = (lowerToken.match(/[bcdfghjklmnpqrstvwxyz]/g) || []).length;
       
-      if (consonantCount > 0 && vowelCount / consonantCount > 3) {
-        return { valid: false, reason: 'Unbalanced vowel-consonant ratio' };
+      // If too many consonants relative to vowels, likely invalid
+      if (consonantCount > 0 && vowelCount === 0 && token.length > 3) {
+        return { valid: false, reason: 'Name contains invalid pattern (no vowels)' };
+      }
+      
+      // Check for excessive consonant clusters (more than 3 consecutive consonants)
+      if (/[bcdfghjklmnpqrstvwxyz]{4,}/i.test(token)) {
+        return { valid: false, reason: 'Name contains invalid consonant cluster' };
+      }
+      
+      // Check vowel-to-consonant ratio - too many consonants is suspicious
+      if (consonantCount > 0 && vowelCount / consonantCount < 0.2 && token.length > 4) {
+        return { valid: false, reason: 'Name has too many consonants (likely invalid)' };
+      }
+      
+      // Check for keyboard patterns (qwerty, asdf, etc.)
+      const keyboardPatterns = [
+        /^[qwerty]+$/i,
+        /^[asdf]+$/i,
+        /^[zxcv]+$/i,
+        /^[hjkl]+$/i,
+        /^[uiop]+$/i,
+        /^[bnm]+$/i
+      ];
+      
+      for (const pattern of keyboardPatterns) {
+        if (pattern.test(token)) {
+          return { valid: false, reason: 'Name contains keyboard pattern (invalid)' };
+        }
+      }
+      
+      // Check for random character patterns (like "dfojgoidf")
+      // Detect if characters are too random (high entropy but no valid structure)
+      if (token.length > 5) {
+        const charFrequency = {};
+        for (const char of lowerToken) {
+          charFrequency[char] = (charFrequency[char] || 0) + 1;
+        }
+        
+        // If no character appears more than once and length > 5, suspicious
+        const maxFreq = Math.max(...Object.values(charFrequency));
+        if (maxFreq === 1 && token.length > 6) {
+          return { valid: false, reason: 'Name appears to be random characters' };
+        }
+        
+        // Check for alternating consonant-vowel patterns that are too regular (suspicious)
+        const pattern = lowerToken.split('').map(c => /[aeiou]/.test(c) ? 'V' : 'C').join('');
+        if (pattern.length > 6 && /^(VC){3,}$|^(CV){3,}$/.test(pattern)) {
+          // This might be valid, but check if it looks like a real name
+          // If it's all unique characters in a pattern, suspicious
+          if (new Set(lowerToken).size === lowerToken.length) {
+            return { valid: false, reason: 'Name pattern appears artificial' };
+          }
+        }
       }
     }
 

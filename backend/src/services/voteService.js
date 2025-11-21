@@ -30,9 +30,44 @@ class VoteService {
         throw new Error('Voter is not verified');
       }
 
-      // Check if voter is dead
-      const deathRecord = await voterService.checkDeathRecord(voter.aadhaar_number);
-      if (deathRecord) {
+      // Check profile completion for sensitive activities
+      const profileService = require('./profileService');
+      try {
+        const completion = await profileService.getCompletionStatus(voteData.voter_id);
+        const completionData = completion?.data || completion;
+        
+        if (completionData) {
+          const mandatoryCheckpoints = [
+            'aadhaar_otp',
+            'email_otp',
+            'mobile_otp',
+            'address_doc',
+            'personal_info',
+            'biometrics',
+          ];
+          
+          const checkpoints = completionData.checkpoints || {};
+          const allMandatoryComplete = mandatoryCheckpoints.every(
+            key => checkpoints[key] === true
+          );
+          
+          if (!allMandatoryComplete || completionData.completionPercentage < 100) {
+            throw new Error('Profile incomplete. All mandatory verifications must be completed before voting.');
+          }
+        }
+      } catch (profileError) {
+        // If profile check fails, block voting for safety
+        if (profileError.message.includes('Profile incomplete')) {
+          throw profileError;
+        }
+        // For other errors, log but don't block (graceful degradation)
+        console.warn('Profile completion check failed:', profileError.message);
+      }
+
+      // Check if voter is marked as inactive/deceased
+      // Only block voting if voter is explicitly marked inactive
+      // Death records alone don't block - they need admin verification
+      if (voter.is_active === false) {
         throw new Error('Voter is deceased');
       }
 

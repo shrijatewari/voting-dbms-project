@@ -62,28 +62,91 @@ export default function PollingStationMap({ selectedStation, onStationSelect, fi
 
   const fetchStations = async () => {
     try {
+      setLoading(true);
+      console.log('Fetching polling stations...');
       const response = await pollingStationService.getAll(filters || {}, 1, 2000);
-      // API returns: { success: true, stations: [...], pagination: {...} }
-      const allStations = response.data?.stations || [];
+      
+      console.log('Raw API response:', response);
+      console.log('Response data:', response?.data);
+      
+      // Backend returns: { success: true, stations: [...], pagination: {...} }
+      // Axios wraps it: response.data = { success: true, stations: [...], pagination: {...} }
+      let allStations = [];
+      
+      if (response && response.data) {
+        // Backend controller returns: res.json({ success: true, ...result })
+        // Where result = { stations: [...], pagination: {...} }
+        // So response.data = { success: true, stations: [...], pagination: {...} }
+        if (Array.isArray(response.data.stations)) {
+          allStations = response.data.stations;
+          console.log('Found stations in response.data.stations');
+        } else if (response.data.data && Array.isArray(response.data.data.stations)) {
+          allStations = response.data.data.stations;
+          console.log('Found stations in response.data.data.stations');
+        } else if (Array.isArray(response.data.data)) {
+          allStations = response.data.data;
+          console.log('Found stations in response.data.data');
+        } else if (Array.isArray(response.stations)) {
+          allStations = response.stations;
+          console.log('Found stations in response.stations');
+        } else {
+          console.warn('Unexpected response format. Keys:', Object.keys(response.data));
+        }
+      }
+      
+      console.log(`Fetched ${allStations.length} polling stations from API`);
+      
+      if (allStations.length > 0) {
+        console.log('Sample station:', allStations[0]);
+      }
       
       // Filter stations with valid coordinates
-      const validStations = allStations.filter((s: any) => 
-        s.latitude && s.longitude && 
-        !isNaN(parseFloat(s.latitude.toString())) && 
-        !isNaN(parseFloat(s.longitude.toString()))
-      );
+      const validStations = allStations.filter((s: any) => {
+        const lat = s.latitude != null ? parseFloat(s.latitude.toString()) : null;
+        const lng = s.longitude != null ? parseFloat(s.longitude.toString()) : null;
+        const isValid = lat != null && lng != null && 
+               !isNaN(lat) && !isNaN(lng) &&
+               lat !== 0 && lng !== 0 &&
+               lat >= -90 && lat <= 90 &&
+               lng >= -180 && lng <= 180;
+        if (!isValid && s.latitude != null) {
+          console.warn('Invalid coordinates for station:', s.station_name, 'lat:', lat, 'lng:', lng);
+        }
+        return isValid;
+      });
       
+      console.log(`Valid stations with coordinates: ${validStations.length}`);
       setStations(validStations);
       
-      // If we have stations, center map on first one or average
+      // If we have stations, center map on average
       if (validStations.length > 0) {
         const avgLat = validStations.reduce((sum: number, s: any) => sum + parseFloat(s.latitude.toString()), 0) / validStations.length;
         const avgLng = validStations.reduce((sum: number, s: any) => sum + parseFloat(s.longitude.toString()), 0) / validStations.length;
         setMapCenter([avgLat, avgLng]);
-        setMapZoom(validStations.length === 1 ? 13 : validStations.length < 5 ? 8 : 6);
+        setMapZoom(validStations.length === 1 ? 13 : validStations.length < 10 ? 8 : 6);
+        console.log(`Map centered at: ${avgLat}, ${avgLng}, zoom: ${validStations.length === 1 ? 13 : validStations.length < 10 ? 8 : 6}`);
+      } else {
+        // Default to India center if no stations
+        setMapCenter([20.5937, 78.9629]);
+        setMapZoom(5);
+        console.warn('No valid stations found, using default India center');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch polling stations:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      });
+      
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        console.error('Network error - backend server may not be running on http://localhost:3000');
+      }
+      
+      setStations([]);
     } finally {
       setLoading(false);
     }
@@ -146,6 +209,10 @@ export default function PollingStationMap({ selectedStation, onStationSelect, fi
         </div>
         <div className="mt-2 pt-2 border-t border-gray-200">
           <p className="text-xs text-gray-500">Total: {stations.length} stations</p>
+          {loading && <p className="text-xs text-blue-600 mt-1">Loading...</p>}
+          {!loading && stations.length === 0 && (
+            <p className="text-xs text-red-600 mt-1">No stations found. Run: npm --prefix backend run seed:1000stations</p>
+          )}
         </div>
       </div>
 

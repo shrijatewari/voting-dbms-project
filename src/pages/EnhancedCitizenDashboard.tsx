@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { voterService, electionService, grievanceService, applicationService, epicService, pollingStationService } from '../services/api';
@@ -14,8 +14,15 @@ export default function EnhancedCitizenDashboard({ user }: any) {
   const [application, setApplication] = useState<any>(null);
   const [pollingStation, setPollingStation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState<string>('');
+  const [aadhaarNumber, setAadhaarNumber] = useState<string>('');
+  const hasChecked = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasChecked.current) return;
+    hasChecked.current = true;
+    
     // Check if user is admin - redirect to admin dashboard
     const userData = localStorage.getItem('user_data');
     if (userData) {
@@ -31,34 +38,77 @@ export default function EnhancedCitizenDashboard({ user }: any) {
       }
     }
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - run only once on mount
+
+  // Timeout fallback - ensure loading stops after 5 seconds
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      console.warn('⏱️ Dashboard loading timeout - forcing display');
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, []); // Run only once on mount
 
   const fetchData = async () => {
     try {
-      // Get voter ID from user data if available
+      // Get voter ID and user name from user data
       const userData = localStorage.getItem('user_data');
       let voterId = null;
       if (userData) {
         try {
           const user = JSON.parse(userData);
           voterId = user.voter_id || user.id;
+          // Set user name from localStorage
+          if (user.name) {
+            setUserName(user.name);
+          }
+          // Set Aadhaar from user_data if available (fallback)
+          if (user.aadhaar_number) {
+            setAadhaarNumber(user.aadhaar_number);
+          }
         } catch (e) {}
       }
 
       // Fetch voter data - try to get current user's voter record
       if (voterId) {
         try {
+          console.log('Fetching voter data for voterId:', voterId);
           const voterResponse = await voterService.getById(voterId);
+          console.log('Voter response:', voterResponse);
+          
           if (voterResponse.data?.data || voterResponse.data) {
             const voterData = voterResponse.data.data || voterResponse.data;
+            console.log('Setting voter data:', voterData);
+            console.log('Aadhaar number:', voterData.aadhaar_number);
             setVoter(voterData);
+            
+            // Set Aadhaar number if available
+            if (voterData.aadhaar_number) {
+              setAadhaarNumber(voterData.aadhaar_number);
+            }
+            
+            // Update user name from voter data if available
+            if (voterData.name) {
+              setUserName(voterData.name);
+            } else if (userData) {
+              // Fallback to localStorage name
+              try {
+                const user = JSON.parse(userData);
+                if (user.name) {
+                  setUserName(user.name);
+                }
+              } catch (e) {}
+            }
             
             // Fetch application if exists
             if (voterData.application_id) {
               try {
                 const appResponse = await applicationService.getApplication(voterData.application_id);
                 setApplication(appResponse.data.data);
-              } catch (e) {}
+              } catch (e) {
+                console.warn('Failed to fetch application:', e);
+              }
             }
             
             // Fetch polling station
@@ -66,22 +116,52 @@ export default function EnhancedCitizenDashboard({ user }: any) {
               try {
                 const stationResponse = await pollingStationService.getById(voterData.polling_station_id);
                 setPollingStation(stationResponse.data.data);
-              } catch (e) {}
+              } catch (e) {
+                console.warn('Failed to fetch polling station:', e);
+              }
             }
+          } else {
+            console.warn('No voter data in response');
           }
         } catch (e) {
           console.error('Failed to fetch voter data:', e);
+          // If voter not found, still try to show name from localStorage
+          if (userData) {
+            try {
+              const user = JSON.parse(userData);
+              if (user.name) {
+                setUserName(user.name);
+              }
+            } catch (parseErr) {}
+          }
         }
       } else {
-        // Fallback: try to get first voter (for testing)
-        try {
-          const voterResponse = await voterService.getAll(1, 1);
-          if (voterResponse.data.voters?.length > 0) {
-            const voterData = voterResponse.data.voters[0];
-            setVoter(voterData);
-          }
-        } catch (e) {
-          console.error('Failed to fetch voter list:', e);
+        console.warn('No voterId found in user_data');
+        // Try to get voter by email if available
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            if (user.name) {
+              setUserName(user.name);
+            }
+            // Try to fetch voter by email
+            if (user.email) {
+              try {
+                const votersResponse = await voterService.getAll(1, 100);
+                const voters = votersResponse.data?.voters || votersResponse.data?.data?.voters || [];
+                const matchingVoter = voters.find((v: any) => v.email === user.email);
+                if (matchingVoter) {
+                  console.log('Found voter by email:', matchingVoter);
+                  setVoter(matchingVoter);
+                  // Update localStorage with voter_id
+                  user.voter_id = matchingVoter.voter_id;
+                  localStorage.setItem('user_data', JSON.stringify(user));
+                }
+              } catch (e) {
+                console.warn('Failed to fetch voter by email:', e);
+              }
+            }
+          } catch (e) {}
         }
       }
 
@@ -112,13 +192,8 @@ export default function EnhancedCitizenDashboard({ user }: any) {
       alert('EPIC not generated yet');
       return;
     }
-    try {
-      const response = await epicService.download(voter.epic_number);
-      // In production, this would download a PDF
-      alert('EPIC download initiated!');
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to download EPIC');
-    }
+    // Navigate to EPIC download page with EPIC number pre-filled
+    navigate(`/epic-download?epic=${voter.epic_number}`);
   };
 
   const handleLogout = () => {
@@ -153,19 +228,22 @@ export default function EnhancedCitizenDashboard({ user }: any) {
 
   return (
     <div className="min-h-screen bg-gray-light">
-      {/* Profile Completion Modal - Only show for citizen users */}
-      {voter && voter.voter_id && (() => {
+      {/* Profile Completion Modal - Show for all citizen users, even without voter data */}
+      {(() => {
         const userData = localStorage.getItem('user_data');
         try {
           if (userData) {
             const user = JSON.parse(userData);
             const role = (user.role || 'citizen').toLowerCase();
             if (role === 'citizen') {
-              return <ProfileCompletionModal voterId={voter.voter_id} />;
+              const voterId = user.voter_id || user.id || voter?.voter_id;
+              if (voterId) {
+                return <ProfileCompletionModal voterId={voterId} />;
+              }
             }
           }
         } catch (e) {
-          // If parsing fails, show modal anyway
+          // If parsing fails, don't show modal
         }
         return null;
       })()}
@@ -182,8 +260,27 @@ export default function EnhancedCitizenDashboard({ user }: any) {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Aadhaar and Application Info */}
+            <div className="text-right mr-4">
+                {(voter?.aadhaar_number || aadhaarNumber) && (
+                  <div className="text-sm">
+                    <span className="text-gray-600">Aadhaar: </span>
+                    <span className="font-semibold text-gray-800">
+                      XXXX-XXXX-{(voter?.aadhaar_number || aadhaarNumber).substring(8)}
+                    </span>
+                  </div>
+                )}
+              {application?.application_id && (
+                <div className="text-sm mt-1">
+                  <span className="text-gray-600">Application: </span>
+                  <span className="font-semibold text-gray-800">
+                    {application.application_id}
+                  </span>
+                </div>
+              )}
+            </div>
             <LanguageSelector compact={true} showLabel={false} />
-            <span className="text-gray-700 font-medium">{t('welcome')}, {voter?.name || user?.name || 'User'}</span>
+            <span className="text-gray-700 font-medium">{t('welcome')}, {userName || voter?.name || 'User'}</span>
             <button onClick={handleLogout} className="text-gray-600 hover:text-primary-navy font-medium">
               {t('logout')}
             </button>
@@ -208,8 +305,13 @@ export default function EnhancedCitizenDashboard({ user }: any) {
             <div className="space-y-2 text-sm mb-4">
               <p><span className="text-gray-600">Name:</span> <span className="font-semibold">{voter?.name || 'N/A'}</span></p>
               <p><span className="text-gray-600">Aadhaar:</span> <span className="font-semibold">
-                {voter?.aadhaar_number ? `XXXX-XXXX-${voter.aadhaar_number.substring(8)}` : 'N/A'}
+                {(voter?.aadhaar_number || aadhaarNumber) && (voter?.aadhaar_number || aadhaarNumber).length >= 12 
+                  ? `XXXX-XXXX-${(voter?.aadhaar_number || aadhaarNumber).substring(8)}` 
+                  : (voter?.aadhaar_number || aadhaarNumber) || 'N/A'}
               </span></p>
+              {application?.application_id && (
+                <p><span className="text-gray-600">Application:</span> <span className="font-semibold">{application.application_id}</span></p>
+              )}
               {voter?.epic_number && (
                 <p><span className="text-gray-600">EPIC:</span> <span className="font-semibold">{voter.epic_number}</span></p>
               )}
@@ -238,12 +340,24 @@ export default function EnhancedCitizenDashboard({ user }: any) {
             {application ? (
               <div className="space-y-2">
                 <p className="text-sm"><span className="text-gray-600">Application ID:</span> <span className="font-semibold">{application.application_id}</span></p>
+                {(voter?.aadhaar_number || aadhaarNumber) && (
+                  <p className="text-sm"><span className="text-gray-600">Aadhaar:</span> <span className="font-semibold">
+                    XXXX-XXXX-{(voter?.aadhaar_number || aadhaarNumber).substring(8)}
+                  </span></p>
+                )}
                 <Link to="/track-application" className="mt-4 inline-block text-primary-navy hover:underline text-sm font-medium">
                   View Timeline →
                 </Link>
               </div>
             ) : (
-              <p className="text-sm text-gray-600">No application found</p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">No application found</p>
+                {(voter?.aadhaar_number || aadhaarNumber) && (
+                  <p className="text-sm"><span className="text-gray-600">Aadhaar:</span> <span className="font-semibold">
+                    XXXX-XXXX-{(voter?.aadhaar_number || aadhaarNumber).substring(8)}
+                  </span></p>
+                )}
+              </div>
             )}
           </div>
 

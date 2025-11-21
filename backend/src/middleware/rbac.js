@@ -173,8 +173,26 @@ function hasPermission(userRole, requiredPermission) {
  * Check if user role is at least the minimum required level
  */
 function hasMinimumRole(userRole, minimumRole) {
-  const userLevel = ROLE_HIERARCHY[userRole?.toLowerCase()] || 1;
-  const minLevel = ROLE_HIERARCHY[minimumRole?.toLowerCase()] || 1;
+  const userRoleUpper = (userRole || '').toUpperCase();
+  const minRoleUpper = (minimumRole || '').toUpperCase();
+  
+  // Map legacy roles
+  const roleMappings = {
+    'ECI': 'SUPERADMIN',
+    'ADMIN': 'DEO',
+    'SUPERADMIN': 'SUPERADMIN'
+  };
+  
+  const mappedUserRole = roleMappings[userRoleUpper] || userRoleUpper;
+  const mappedMinRole = roleMappings[minRoleUpper] || minRoleUpper;
+  
+  // SUPERADMIN/ECI always passes
+  if (mappedUserRole === 'SUPERADMIN' || mappedUserRole === 'ECI') {
+    return true;
+  }
+  
+  const userLevel = ROLE_HIERARCHY[mappedUserRole] || ROLE_HIERARCHY[userRoleUpper] || ROLE_HIERARCHY[userRoleUpper?.toLowerCase()] || 1;
+  const minLevel = ROLE_HIERARCHY[mappedMinRole] || ROLE_HIERARCHY[minRoleUpper] || ROLE_HIERARCHY[minRoleUpper?.toLowerCase()] || 1;
   return userLevel >= minLevel;
 }
 

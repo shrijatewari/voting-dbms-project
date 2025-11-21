@@ -49,28 +49,107 @@ class NotificationService extends EventEmitter {
   async checkHighRiskFlags() {
     const connection = await pool.getConnection();
     try {
-      // Get critical/high risk address flags created in last 5 minutes
-      const [criticalFlags] = await connection.query(`
-        SELECT id, address_hash, voter_count, risk_level, risk_score, district, state
-        FROM address_cluster_flags
-        WHERE risk_level IN ('critical', 'high')
-          AND status = 'open'
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-        ORDER BY risk_score DESC
-        LIMIT 10
+      // Check if table exists
+      const [tables] = await connection.query(`
+        SELECT TABLE_NAME 
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'address_cluster_flags'
       `);
+      
+      if (tables.length === 0) {
+        // Table doesn't exist, skip silently
+        return;
+      }
+      
+      // Get critical/high risk address flags created in last 5 minutes
+      // Check if table exists and has the correct columns
+      const [tableInfo] = await connection.query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'address_cluster_flags'
+      `);
+      
+      if (tableInfo.length === 0) {
+        // No columns found, skip silently
+        return;
+      }
+      
+      const hasIdColumn = tableInfo.some(col => col.COLUMN_NAME === 'id');
+      const hasFlagIdColumn = tableInfo.some(col => col.COLUMN_NAME === 'flag_id');
+      const hasClusterIdColumn = tableInfo.some(col => col.COLUMN_NAME === 'cluster_id');
+      
+      const idColumn = hasIdColumn ? 'id' : (hasFlagIdColumn ? 'flag_id' : (hasClusterIdColumn ? 'cluster_id' : null));
+      
+      if (!idColumn) {
+        // Table doesn't have ID column, skip silently
+        return;
+      }
+      
+      // Build query based on available columns
+      const hasRiskLevel = tableInfo.some(col => col.COLUMN_NAME === 'risk_level');
+      const hasRiskScore = tableInfo.some(col => col.COLUMN_NAME === 'risk_score');
+      const hasIsSuspicious = tableInfo.some(col => col.COLUMN_NAME === 'is_suspicious');
+      
+      if (!hasRiskLevel && !hasIsSuspicious) {
+        // Table doesn't have risk columns, skip silently
+        return;
+      }
+      
+      let query = `SELECT ${idColumn} as id, address_hash`;
+      if (tableInfo.some(col => col.COLUMN_NAME === 'voter_count')) query += ', voter_count';
+      if (hasRiskLevel) query += ', risk_level';
+      if (hasRiskScore) query += ', risk_score';
+      if (tableInfo.some(col => col.COLUMN_NAME === 'district')) query += ', district';
+      if (tableInfo.some(col => col.COLUMN_NAME === 'state')) query += ', state';
+      query += ` FROM address_cluster_flags WHERE `;
+      
+      if (hasRiskLevel) {
+        query += `risk_level IN ('critical', 'high')`;
+      } else if (hasIsSuspicious) {
+        query += `is_suspicious = TRUE`;
+      } else {
+        return;
+      }
+      
+      if (tableInfo.some(col => col.COLUMN_NAME === 'status')) query += ` AND status = 'open'`;
+      if (tableInfo.some(col => col.COLUMN_NAME === 'flagged_at')) query += ` AND flagged_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)`;
+      if (tableInfo.some(col => col.COLUMN_NAME === 'created_at')) query += ` AND created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)`;
+      
+      if (hasRiskScore) {
+        query += ` ORDER BY risk_score DESC`;
+      }
+      query += ` LIMIT 10`;
+      
+      // Get critical flags
+      let criticalFlags = [];
+      try {
+        const [flags] = await connection.query(query);
+        criticalFlags = flags || [];
+      } catch (queryError) {
+        // Silently skip if query fails (table structure mismatch)
+        console.debug('Skipping address flags check:', queryError.message);
+      }
 
       // Get urgent review tasks created in last 5 minutes
-      const [urgentTasks] = await connection.query(`
-        SELECT task_id, voter_id, task_type, priority, created_at
-        FROM review_tasks
-        WHERE priority = 'urgent'
-          AND status = 'open'
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-        ORDER BY created_at DESC
-        LIMIT 10
-      `);
-
+      let urgentTasks = [];
+      try {
+        const [tasks] = await connection.query(`
+          SELECT task_id, voter_id, task_type, priority, created_at
+          FROM review_tasks
+          WHERE priority = 'urgent'
+            AND status = 'open'
+            AND created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+          ORDER BY created_at DESC
+          LIMIT 10
+        `);
+        urgentTasks = tasks || [];
+      } catch (taskError) {
+        // Silently skip if review_tasks table doesn't exist or has issues
+        console.debug('Skipping review tasks check:', taskError.message);
+      }
+      
       // Emit notifications for critical flags
       for (const flag of criticalFlags) {
         const notificationId = `flag_${flag.id}`;

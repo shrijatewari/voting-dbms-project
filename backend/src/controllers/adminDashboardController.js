@@ -23,10 +23,27 @@ class AdminDashboardController {
   async getAIStatus(req, res, next) {
     try {
       const health = await aiClient.healthCheck();
-      res.json({ success: true, data: health });
+      // Count active services
+      const activeServices = Object.values(health).filter((s) => s.status === 'ok').length;
+      res.json({ 
+        success: true, 
+        data: {
+          ...health,
+          activeServices,
+          totalServices: Object.keys(health).length
+        }
+      });
     } catch (err) {
       // If AI services are down, still respond gracefully
-      res.json({ success: false, data: { error: 'AI services not reachable' } });
+      console.warn('AI health check failed:', err);
+      res.json({ 
+        success: false, 
+        data: { 
+          error: 'AI services not reachable',
+          activeServices: 0,
+          totalServices: 6
+        } 
+      });
     }
   }
 }

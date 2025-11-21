@@ -4,7 +4,7 @@ const biometricAdminController = require('../controllers/biometricAdminControlle
 const { requireMinimumRole } = require('../middleware/rbac');
 
 // All routes require minimum DEO role
-router.use(requireMinimumRole('deo'));
+router.use(...requireMinimumRole('deo'));
 
 // GET /admin/biometrics/stats - Overview stats
 router.get('/stats', biometricAdminController.getStats);

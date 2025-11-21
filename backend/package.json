@@ -10,8 +10,13 @@
     "migrate:extended": "node src/db/migrate_extended.js",
     "seed": "node src/db/seed.js",
     "seed:stations": "node src/db/seed_polling_stations.js",
+    "seed:1000stations": "node src/db/seed_1000_polling_stations.js",
+    "seed:elections": "node src/db/seed_elections.js",
+    "seed:elections-full": "node src/db/seed_elections_with_candidates.js",
+    "seed:voters": "node src/db/seed_voters.js",
     "migrate:profile": "node src/db/migrate_profile_extended.js",
-    "migrate:reset": "node src/db/migrate.js --reset"
+    "migrate:reset": "node src/db/migrate.js --reset",
+    "fix:gender": "node src/db/fix_gender_enum.js"
   },
   "keywords": [
     "voting",

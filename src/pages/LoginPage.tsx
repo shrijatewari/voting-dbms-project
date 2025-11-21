@@ -31,14 +31,30 @@ export default function LoginPage({ setUser, setIsAdmin }: { setUser: (user: any
       localStorage.setItem('user_data', JSON.stringify(userData));
       setUser(userData);
       
-      // Redirect based on role
+      // Redirect based on role - check for admin roles
       const role = (userData.role || 'citizen').toLowerCase();
-      const isAdminRole = role !== 'citizen';
+      const roleUpper = (userData.role || 'citizen').toUpperCase();
+      
+      // Check if admin role (ECI, SUPERADMIN, ADMIN, DEO, CEO, ERO, BLO)
+      const isAdminRole = role !== 'citizen' || 
+                         roleUpper === 'ECI' || 
+                         roleUpper === 'SUPERADMIN' || 
+                         roleUpper === 'ADMIN' ||
+                         roleUpper === 'DEO' ||
+                         roleUpper === 'CEO' ||
+                         roleUpper === 'ERO' ||
+                         roleUpper === 'BLO';
+      
+      // Actually, just check if not citizen
+      const isAdmin = role !== 'citizen';
+      
       if (setIsAdmin) {
-        setIsAdmin(isAdminRole);
+        setIsAdmin(isAdmin);
       }
       
-      if (isAdminRole) {
+      console.log('Login redirect:', { role, roleUpper, isAdmin, email: userData.email });
+      
+      if (isAdmin) {
         navigate('/admin');
       } else {
         navigate('/dashboard');
@@ -54,12 +70,17 @@ export default function LoginPage({ setUser, setIsAdmin }: { setUser: (user: any
       
       let errorMsg = 'Login failed. Please try again.';
       
-      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
-        errorMsg = 'Cannot connect to backend server. Please ensure:\n1. Backend server is running on http://localhost:3000\n2. No firewall is blocking the connection\n3. Check browser console for details';
+      // Check for network/connection errors
+      if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch') || err.message?.includes('Connection refused')) {
+        errorMsg = 'Backend server is not running. Please start it with: npm --prefix backend start';
       } else if (err.response?.status === 401) {
         errorMsg = err.response.data?.error || 'Invalid email or password';
+      } else if (err.response?.status === 404) {
+        errorMsg = 'Login endpoint not found. Check backend routes.';
       } else if (err.response?.data?.error) {
         errorMsg = err.response.data.error;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
       } else if (err.message) {
         errorMsg = err.message;
       }

@@ -13,17 +13,21 @@ export default function AppealsManagement() {
       return;
     }
     setLoading(true);
+    setError('');
     try {
+      // Backend expects appeal_type (already in correct format from dropdown)
       await appealService.createAppeal({
         voter_id: parseInt(newAppeal.voter_id),
-        reason: newAppeal.reason,
-        description: newAppeal.description
+        appeal_type: newAppeal.reason, // This is the appeal type from dropdown
+        reason: newAppeal.description || 'No description provided' // Description goes to reason field
       });
       alert('Appeal created successfully!');
       setNewAppeal({ voter_id: '', reason: '', description: '' });
       loadAppeals();
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to create appeal');
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to create appeal';
+      setError(errorMsg);
+      console.error('Appeal creation error:', err);
     } finally {
       setLoading(false);
     }
@@ -73,11 +77,12 @@ export default function AppealsManagement() {
                   value={newAppeal.reason}
                   onChange={(e) => setNewAppeal({ ...newAppeal, reason: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  required
                 >
                   <option value="">Select reason</option>
-                  <option value="wrong_deletion">Wrong Deletion</option>
-                  <option value="duplicate_flag">Duplicate Flag</option>
-                  <option value="death_record_error">Death Record Error</option>
+                  <option value="removal">Wrong Deletion/Removal</option>
+                  <option value="duplicate-flag">Duplicate Flag</option>
+                  <option value="verification-rejection">Verification Rejection</option>
                   <option value="other">Other</option>
                 </select>
               </div>

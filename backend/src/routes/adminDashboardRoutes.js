@@ -5,13 +5,13 @@ const adminDashboardController = require('../controllers/adminDashboardControlle
 
 // All admin routes require minimum role of 'admin' (excludes citizens)
 // GET /api/admin/dashboard/stats
-router.get('/dashboard/stats', requireMinimumRole('admin'), adminDashboardController.getStats.bind(adminDashboardController));
+router.get('/dashboard/stats', ...requireMinimumRole('admin'), adminDashboardController.getStats.bind(adminDashboardController));
 
 // GET /api/admin/dashboard/graphs
-router.get('/dashboard/graphs', requireMinimumRole('admin'), adminDashboardController.getGraphs.bind(adminDashboardController));
+router.get('/dashboard/graphs', ...requireMinimumRole('admin'), adminDashboardController.getGraphs.bind(adminDashboardController));
 
 // GET /api/admin/dashboard/ai-status
-router.get('/dashboard/ai-status', requireMinimumRole('admin'), adminDashboardController.getAIStatus.bind(adminDashboardController));
+router.get('/dashboard/ai-status', ...requireMinimumRole('admin'), adminDashboardController.getAIStatus.bind(adminDashboardController));
 
 module.exports = router;
 

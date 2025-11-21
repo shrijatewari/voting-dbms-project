@@ -2,6 +2,22 @@ const applicationService = require('../services/applicationService');
 
 async function getApplication(req, res, next) {
   try {
+    const { includeHistory } = req.query;
+    
+    // If history is requested, use optimized combined query
+    if (includeHistory === 'true') {
+      const result = await applicationService.getApplicationWithHistory(req.params.applicationId);
+      if (!result.application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+      return res.json({ 
+        success: true, 
+        data: result.application,
+        trackingHistory: result.trackingHistory
+      });
+    }
+    
+    // Otherwise, just get application
     const application = await applicationService.getApplicationByID(req.params.applicationId);
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });

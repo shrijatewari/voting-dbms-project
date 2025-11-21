@@ -66,26 +66,52 @@ async function ensureUsersSeeded() {
       console.log(`✅ ${user.role.toUpperCase()}: ${user.email} / ${user.password}`);
     }
 
-    // Seed a test citizen voter (only if doesn't exist)
+    // Seed a test citizen voter AND user account (only if doesn't exist)
     try {
-      const [existing] = await connection.query(
+      const [existingVoter] = await connection.query(
         `SELECT voter_id FROM voters WHERE email = ? LIMIT 1`,
         ['citizen1@example.com']
       );
       
-      if (existing.length === 0) {
-        await connection.query(
+      let voterId;
+      if (existingVoter.length === 0) {
+        const [result] = await connection.query(
           `INSERT INTO voters (name, email, mobile_number, aadhaar_number, dob, is_verified, biometric_hash)
            VALUES (?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE email = VALUES(email)`,
           ['Test Citizen', 'citizen1@example.com', '9876543210', '999999999999', '1990-05-15', true, 'a'.repeat(64)]
         );
-        console.log(`✅ CITIZEN: citizen1@example.com / any`);
+        voterId = result.insertId || existingVoter[0]?.voter_id;
+        console.log(`✅ CITIZEN VOTER: citizen1@example.com created`);
       } else {
-        console.log(`✅ CITIZEN: citizen1@example.com / any (already exists)`);
+        voterId = existingVoter[0].voter_id;
+        console.log(`✅ CITIZEN VOTER: citizen1@example.com (already exists)`);
+      }
+      
+      // Create user account for citizen
+      const [existingUser] = await connection.query(
+        `SELECT user_id FROM users WHERE email = ? LIMIT 1`,
+        ['citizen1@example.com']
+      );
+      
+      if (existingUser.length === 0) {
+        const passwordHash = crypto.createHash('sha256').update('any').digest('hex');
+        await connection.query(
+          `INSERT INTO users (username, email, password_hash, role, voter_id)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+             username = VALUES(username),
+             password_hash = VALUES(password_hash),
+             role = VALUES(role),
+             voter_id = VALUES(voter_id)`,
+          ['Test Citizen', 'citizen1@example.com', passwordHash, 'citizen', voterId]
+        );
+        console.log(`✅ CITIZEN USER: citizen1@example.com / any`);
+      } else {
+        console.log(`✅ CITIZEN USER: citizen1@example.com / any (already exists)`);
       }
     } catch (err) {
-      console.log(`⚠️  Could not seed citizen voter: ${err.message}`);
+      console.log(`⚠️  Could not seed citizen: ${err.message}`);
     }
 
     console.log('\n🎉 All users seeded successfully!');

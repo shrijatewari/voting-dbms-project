@@ -76,9 +76,25 @@ const validateVoterRegistration = (req, res, next) => {
     }
   }
 
-  // Father's name (mandatory for Indian voters)
+  // Father's name (mandatory for Indian voters) - Enhanced validation
   if (!father_name || father_name.trim().length < 3) {
     errors.push({ field: 'father_name', message: "Father's name is required (minimum 3 characters)" });
+  } else {
+    const trimmedFatherName = father_name.trim();
+    // Check for invalid patterns
+    if (!/[aeiouAEIOU]/.test(trimmedFatherName) && trimmedFatherName.length > 3) {
+      errors.push({ field: 'father_name', message: "Father's name appears invalid (contains no vowels)" });
+    }
+    // Check for excessive consonants
+    const consonantCount = (trimmedFatherName.match(/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]/g) || []).length;
+    const vowelCount = (trimmedFatherName.match(/[aeiouAEIOU]/g) || []).length;
+    if (consonantCount > 0 && vowelCount === 0 && trimmedFatherName.length > 3) {
+      errors.push({ field: 'father_name', message: "Father's name contains invalid pattern" });
+    }
+    // Check for keyboard patterns
+    if (/^[qwertyuiopasdfghjklzxcvbnm]{4,}$/i.test(trimmedFatherName)) {
+      errors.push({ field: 'father_name', message: "Father's name appears to be random characters" });
+    }
   }
 
   // Gender (mandatory) - accept both cases

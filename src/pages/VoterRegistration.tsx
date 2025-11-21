@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import BiometricCapture from '../components/BiometricCapture';
 import OTPVerification from '../components/OTPVerification';
 import AddressAutocomplete from '../components/AddressAutocomplete';
-import { voterService, biometricService, otpService } from '../services/api';
+import { voterService, biometricService, otpService, authService } from '../services/api';
 import LanguageSelector from '../components/LanguageSelector';
 
 export default function VoterRegistration() {
@@ -54,9 +54,130 @@ export default function VoterRegistration() {
     setError('');
   };
 
+  // Name validation function to detect invalid patterns like random characters
+  const validateName = (name: string): { valid: boolean; reason?: string } => {
+    if (!name || typeof name !== 'string') {
+      return { valid: false, reason: 'Name is required' };
+    }
+
+    const trimmed = name.trim();
+    
+    // Minimum length check
+    if (trimmed.length < 3) {
+      return { valid: false, reason: 'Name too short (minimum 3 characters)' };
+    }
+
+    // Check for digits
+    if (/\d/.test(trimmed)) {
+      return { valid: false, reason: 'Name cannot contain digits' };
+    }
+
+    // Check for invalid special characters (allow hyphen, space, apostrophe, period)
+    if (/[^a-zA-Z\s\.\-\']/.test(trimmed)) {
+      return { valid: false, reason: 'Name contains invalid characters' };
+    }
+
+    const lowerName = trimmed.toLowerCase();
+    const tokens = trimmed.split(/\s+/).filter(t => t.length > 0);
+
+    // Check each token
+    for (const token of tokens) {
+      const lowerToken = token.toLowerCase();
+      
+      // Check if token has vowels (critical for valid names)
+      const hasVowel = /[aeiou]/.test(lowerToken);
+      const vowelCount = (lowerToken.match(/[aeiou]/g) || []).length;
+      const consonantCount = (lowerToken.match(/[bcdfghjklmnpqrstvwxyz]/g) || []).length;
+
+      // Names without vowels are almost always invalid (except very short ones)
+      if (!hasVowel && token.length > 3) {
+        return { valid: false, reason: 'Name contains invalid pattern (no vowels detected)' };
+      }
+
+      // Check for excessive consonant clusters (more than 3 consecutive consonants)
+      if (/[bcdfghjklmnpqrstvwxyz]{4,}/i.test(token)) {
+        return { valid: false, reason: 'Name contains invalid consonant cluster' };
+      }
+
+      // If too many consonants relative to vowels, likely invalid
+      if (consonantCount > 0 && vowelCount === 0 && token.length > 3) {
+        return { valid: false, reason: 'Name contains invalid pattern (no vowels)' };
+      }
+      
+      // Check vowel-to-consonant ratio - too many consonants is suspicious
+      if (consonantCount > 0 && vowelCount / consonantCount < 0.2 && token.length > 4) {
+        return { valid: false, reason: 'Name has too many consonants (likely invalid)' };
+      }
+
+      // Check for keyboard patterns (qwerty, asdf, etc.)
+      const keyboardPatterns = [
+        /^[qwerty]+$/i,
+        /^[asdf]+$/i,
+        /^[zxcv]+$/i,
+        /^[hjkl]+$/i,
+        /^[uiop]+$/i,
+        /^[bnm]+$/i
+      ];
+      
+      for (const pattern of keyboardPatterns) {
+        if (pattern.test(token)) {
+          return { valid: false, reason: 'Name contains keyboard pattern (invalid)' };
+        }
+      }
+
+      // Check for suspicious patterns
+      const suspiciousPatterns = [
+        /^asdf/i,
+        /^qwerty/i,
+        /^test/i,
+        /^demo/i,
+        /^sample/i,
+        /^fake/i,
+        /^dummy/i,
+        /^xyz/i,
+        /^abc/i
+      ];
+
+      for (const pattern of suspiciousPatterns) {
+        if (pattern.test(token)) {
+          return { valid: false, reason: 'Name contains suspicious pattern' };
+        }
+      }
+
+      // Check for random character patterns (like "dfojgoidf")
+      // Detect if characters are too random (high entropy but no valid structure)
+      if (token.length > 5) {
+        const charFrequency: { [key: string]: number } = {};
+        for (const char of lowerToken) {
+          charFrequency[char] = (charFrequency[char] || 0) + 1;
+        }
+        
+        // If no character appears more than once and length > 6, suspicious
+        const maxFreq = Math.max(...Object.values(charFrequency));
+        if (maxFreq === 1 && token.length > 6) {
+          return { valid: false, reason: 'Name appears to be random characters' };
+        }
+      }
+
+      // Check if all characters are the same
+      if (/^(.)\1+$/.test(token)) {
+        return { valid: false, reason: 'Name contains repeated characters' };
+      }
+    }
+
+    return { valid: true };
+  };
+
   const validateForm = () => {
+    // Validate voter's own name first
     if (!formData.name || formData.name.trim().length < 3) {
       setError('Full name is required (minimum 3 characters)');
+      return false;
+    }
+    
+    const voterNameValidation = validateName(formData.name);
+    if (!voterNameValidation.valid) {
+      setError(`Your name: ${voterNameValidation.reason}`);
       return false;
     }
 
@@ -105,6 +226,22 @@ export default function VoterRegistration() {
     if (!formData.father_name || formData.father_name.trim().length < 3) {
       setError("Father's name is required (minimum 3 characters)");
       return false;
+    }
+    
+    // Validate father's name for invalid patterns
+    const fatherNameValidation = validateName(formData.father_name);
+    if (!fatherNameValidation.valid) {
+      setError(`Father's name: ${fatherNameValidation.reason}`);
+      return false;
+    }
+    
+    // Validate mother's name if provided
+    if (formData.mother_name && formData.mother_name.trim().length > 0) {
+      const motherNameValidation = validateName(formData.mother_name);
+      if (!motherNameValidation.valid) {
+        setError(`Mother's name: ${motherNameValidation.reason}`);
+        return false;
+      }
     }
 
     if (!formData.gender) {
@@ -345,7 +482,10 @@ export default function VoterRegistration() {
         is_verified: false,
       });
 
-      const voterId = voterResponse.data.data.voter_id;
+      const voterId = voterResponse.data?.data?.voter_id || voterResponse.data?.voter_id;
+      if (!voterId) {
+        throw new Error('Failed to get voter ID from registration response');
+      }
       console.log('✅ Voter created with ID:', voterId);
 
       // Register face biometric
@@ -379,6 +519,55 @@ export default function VoterRegistration() {
       setShowBiometric(false);
       setStep('details');
       
+      // After registration, auto-login the user
+      try {
+        // Try to login with the registered email and password
+        try {
+          const loginResponse = await authService.login(formData.email, formData.password);
+          const loginData = loginResponse.data || loginResponse;
+          if (loginData.token && loginData.user) {
+            // Store auth token and user data
+            localStorage.setItem('auth_token', loginData.token);
+            localStorage.setItem('user_data', JSON.stringify({
+              ...loginData.user,
+              voter_id: voterId,
+              name: formData.name,
+              email: formData.email,
+              role: 'citizen'
+            }));
+          } else {
+            // Fallback: create user_data without token (user will need to login)
+            localStorage.setItem('user_data', JSON.stringify({
+              id: voterId,
+              voter_id: voterId,
+              email: formData.email,
+              name: formData.name,
+              role: 'citizen'
+            }));
+          }
+        } catch (loginErr) {
+          // Login failed, but registration succeeded - store user data anyway
+          console.warn('Auto-login failed, storing user data:', loginErr);
+          localStorage.setItem('user_data', JSON.stringify({
+            id: voterId,
+            voter_id: voterId,
+            email: formData.email,
+            name: formData.name,
+            role: 'citizen'
+          }));
+        }
+      } catch (e) {
+        console.error('Error storing user data:', e);
+        // Still store basic user data
+        localStorage.setItem('user_data', JSON.stringify({
+          id: voterId,
+          voter_id: voterId,
+          email: formData.email,
+          name: formData.name,
+          role: 'citizen'
+        }));
+      }
+      
       // Success message with all verification details
       const successMessage = `🎉 Registration Successful!\n\n` +
         `Voter ID: ${voterId}\n\n` +
@@ -388,16 +577,19 @@ export default function VoterRegistration() {
         `✓ Face Biometric: Registered\n` +
         `✓ Fingerprint Biometric: Registered\n` +
         `✓ Liveness Check: ${livenessPassed ? 'Passed' : 'Not verified'}\n\n` +
-        `Your registration is complete! You can now access the dashboard.`;
+        `Your registration is complete! Redirecting to dashboard...`;
       
       alert(successMessage);
+      // Redirect to citizen dashboard
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
       let errorMessage = 'Registration failed. Please try again.';
 
-      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
-        errorMessage = 'Network error: Please check your internet connection and ensure the backend server is running.';
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
+        errorMessage = 'Network error: Please check your internet connection and ensure the backend server is running on http://localhost:3000';
+      } else if (err.response?.status === 409) {
+        errorMessage = err.response?.data?.message || err.response?.data?.error || 'Duplicate registration detected';
       } else if (err.response?.data) {
         if (err.response.data.details && Array.isArray(err.response.data.details)) {
           errorMessage = err.response.data.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');

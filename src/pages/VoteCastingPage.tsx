@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { candidateService, voteService } from '../services/api';
+import { candidateService, voteService, profileService } from '../services/api';
 
 export default function VoteCastingPage() {
   const { electionId } = useParams();
@@ -9,12 +9,72 @@ export default function VoteCastingPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string>('');
 
   useEffect(() => {
     if (electionId) {
+      checkProfileCompletion();
       fetchCandidates();
     }
   }, [electionId]);
+
+  const checkProfileCompletion = async () => {
+    try {
+      const userData = localStorage.getItem('user_data');
+      let voterId = null;
+      
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          voterId = user.voter_id || user.id;
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
+      if (!voterId) {
+        setProfileComplete(false);
+        setBlockedReason('Please log in to cast your vote.');
+        return;
+      }
+
+      const response = await profileService.getCompletionStatus(voterId);
+      const completionData = response.data?.data;
+      
+      if (!completionData) {
+        setProfileComplete(false);
+        setBlockedReason('Profile not found. Please complete registration.');
+        return;
+      }
+
+      const mandatoryCheckpoints = [
+        'aadhaar_otp',
+        'email_otp',
+        'mobile_otp',
+        'address_doc',
+        'personal_info',
+        'biometrics',
+      ];
+
+      const checkpoints = completionData.checkpoints || {};
+      const allMandatoryComplete = mandatoryCheckpoints.every(
+        key => checkpoints[key] === true
+      );
+
+      if (!allMandatoryComplete || completionData.completionPercentage < 100) {
+        setProfileComplete(false);
+        const incomplete = mandatoryCheckpoints.filter(key => !checkpoints[key]);
+        setBlockedReason(`Profile incomplete. Please complete: ${incomplete.map(k => k.replace('_', ' ')).join(', ')}`);
+      } else {
+        setProfileComplete(true);
+      }
+    } catch (error) {
+      console.error('Failed to check profile completion:', error);
+      setProfileComplete(false);
+      setBlockedReason('Unable to verify profile completion. Please try again.');
+    }
+  };
 
   const fetchCandidates = async () => {
     try {
@@ -30,10 +90,38 @@ export default function VoteCastingPage() {
   const handleVote = async () => {
     if (!selectedCandidate || !electionId) return;
 
+    // Check profile completion before allowing vote
+    if (profileComplete === false) {
+      alert(`Cannot cast vote: ${blockedReason}\n\nPlease complete your profile first.`);
+      navigate('/update-profile');
+      return;
+    }
+
+    if (profileComplete === null) {
+      alert('Please wait while we verify your profile completion...');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // In real app, get voter_id from auth context
-      const voterId = 1; // Placeholder
+      // Get voter_id from logged-in user
+      const userData = localStorage.getItem('user_data');
+      let voterId = null;
+      
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          voterId = user.voter_id || user.id;
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
+      if (!voterId) {
+        alert('Please log in to cast your vote.');
+        navigate('/login');
+        return;
+      }
       
       await voteService.create({
         voter_id: voterId,
@@ -44,11 +132,46 @@ export default function VoteCastingPage() {
       alert('Vote cast successfully!');
       navigate('/dashboard');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to cast vote');
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to cast vote';
+      alert(errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Show blocking message if profile incomplete
+  if (profileComplete === false) {
+    return (
+      <div className="min-h-screen bg-gray-light py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="card bg-red-50 border-2 border-red-300">
+            <div className="text-center py-8">
+              <div className="text-6xl mb-4">🔒</div>
+              <h1 className="text-2xl font-bold text-red-800 mb-4">Voting Blocked</h1>
+              <p className="text-gray-700 mb-2">{blockedReason}</p>
+              <p className="text-sm text-gray-600 mb-6">
+                Election-sensitive activities require a complete profile with all mandatory verifications.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => navigate('/update-profile')}
+                  className="btn-primary"
+                >
+                  Complete Profile Now →
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="btn-secondary"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-light py-8 px-4">

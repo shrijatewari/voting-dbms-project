@@ -120,16 +120,61 @@ class ApplicationService {
   }
 
   /**
-   * Get application by ID
+   * Get application by ID (optimized with only necessary fields)
    */
   async getApplicationByID(applicationId) {
     const connection = await pool.getConnection();
     try {
       const [rows] = await connection.query(
-        'SELECT * FROM voters WHERE application_id = ?',
+        `SELECT 
+          voter_id, name, aadhaar_number, application_id, application_status, 
+          epic_number, email, mobile_number, dob, gender, 
+          polling_station_id, created_at, updated_at
+         FROM voters 
+         WHERE application_id = ?`,
         [applicationId]
       );
       return rows[0] || null;
+    } finally {
+      connection.release();
+    }
+  }
+
+  /**
+   * Get application with tracking history in one query (optimized)
+   */
+  async getApplicationWithHistory(applicationId) {
+    const connection = await pool.getConnection();
+    try {
+      // Get application
+      const [appRows] = await connection.query(
+        `SELECT 
+          voter_id, name, aadhaar_number, application_id, application_status, 
+          epic_number, email, mobile_number, dob, gender, 
+          polling_station_id, created_at, updated_at
+         FROM voters 
+         WHERE application_id = ?`,
+        [applicationId]
+      );
+
+      if (appRows.length === 0) {
+        return { application: null, trackingHistory: [] };
+      }
+
+      // Get tracking history
+      const [historyRows] = await connection.query(
+        `SELECT at.*, u.username, u.role 
+         FROM application_tracking at
+         LEFT JOIN users u ON at.changed_by = u.user_id
+         WHERE at.application_id = ?
+         ORDER BY at.status_changed_at ASC`,
+        [applicationId]
+      );
+
+      return {
+        application: appRows[0],
+        trackingHistory: historyRows
+      };
     } finally {
       connection.release();
     }

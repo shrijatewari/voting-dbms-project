@@ -176,7 +176,12 @@ export const pollingStationService = {
 
 // Applications
 export const applicationService = {
-  getApplication: (applicationId: string) => api.get(`/applications/${applicationId}`),
+  getApplication: (applicationId: string, includeHistory?: boolean) => {
+    const url = includeHistory 
+      ? `/applications/${applicationId}?includeHistory=true`
+      : `/applications/${applicationId}`;
+    return api.get(url);
+  },
   getTrackingHistory: (applicationId: string) => api.get(`/applications/${applicationId}/tracking`),
   updateStatus: (applicationId: string, status: string, remarks?: string) =>
     api.put(`/applications/${applicationId}/status`, { status, remarks }),
@@ -317,11 +322,67 @@ export const dataImportService = {
   rollbackImport: (id: number) => api.post(`/data/migrate/rollback/${id}`),
 };
 
-// SIEM
+// SIEM - Comprehensive Security Dashboard
 export const siemService = {
+  // Legacy endpoints
   logSecurityEvent: (data: any) => api.post('/security/incident', data),
   detectSuspiciousLogins: () => api.get('/security/suspicious-logins'),
   getSecurityStats: (days = 7) => api.get(`/security/stats?days=${days}`),
+  
+  // New comprehensive endpoints
+  getOverview: (period = 7) => api.get(`/security/overview?period=${period}`),
+  getEventTimeline: (limit = 200, filters?: any) => {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    if (filters?.severity) params.append('severity', filters.severity);
+    if (filters?.event_type) params.append('event_type', filters.event_type);
+    if (filters?.source_ip) params.append('source_ip', filters.source_ip);
+    if (filters?.user_id) params.append('user_id', filters.user_id.toString());
+    if (filters?.start_date) params.append('start_date', filters.start_date);
+    if (filters?.end_date) params.append('end_date', filters.end_date);
+    return api.get(`/security/events/timeline?${params}`);
+  },
+  getThreatHeatmap: (period = 7) => api.get(`/security/threats/heatmap?period=${period}`),
+  getAnomalies: (filters?: any) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.severity) params.append('severity', filters.severity);
+    if (filters?.anomaly_type) params.append('anomaly_type', filters.anomaly_type);
+    const query = params.toString();
+    return api.get(`/security/anomalies${query ? `?${query}` : ''}`);
+  },
+  resolveAnomaly: (anomalyId: number, resolutionStatus: string, notes?: string) =>
+    api.post(`/security/anomalies/${anomalyId}/resolve`, { resolution_status: resolutionStatus, notes }),
+  getAdminActivity: (filters?: any) => {
+    const params = new URLSearchParams();
+    if (filters?.admin_id) params.append('admin_id', filters.admin_id.toString());
+    if (filters?.role) params.append('role', filters.role);
+    if (filters?.module) params.append('module', filters.module);
+    if (filters?.action) params.append('action', filters.action);
+    if (filters?.risk_level) params.append('risk_level', filters.risk_level);
+    if (filters?.start_date) params.append('start_date', filters.start_date);
+    const query = params.toString();
+    return api.get(`/security/admin-activity${query ? `?${query}` : ''}`);
+  },
+  getHashChainStatus: () => api.get('/security/hash-chain/status'),
+  verifyHashChain: () => api.post('/security/hash-chain/verify'),
+  getIPBlocks: (activeOnly = true) => api.get(`/security/ip-blocks?active=${activeOnly}`),
+  blockIP: (ipAddress: string, reason: string, expiresAt?: string, blockType = 'manual') =>
+    api.post('/security/ip-blocks/block', { ip_address: ipAddress, reason, expires_at: expiresAt, block_type: blockType }),
+  unblockIP: (ipAddress: string) => api.post('/security/ip-blocks/unblock', { ip_address: ipAddress }),
+  getRateLimitLogs: (periodHours = 24) => api.get(`/security/rate-limits?period=${periodHours}`),
+  getSecurityAlerts: (filters?: any) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.severity) params.append('severity', filters.severity);
+    const query = params.toString();
+    return api.get(`/security/alerts${query ? `?${query}` : ''}`);
+  },
+  acknowledgeAlert: (alertId: number) => api.post(`/security/alerts/${alertId}/acknowledge`),
+  resolveAlert: (alertId: number, resolutionNotes: string) =>
+    api.post(`/security/alerts/${alertId}/resolve`, { resolution_notes: resolutionNotes }),
+  getSecurityRiskScore: () => api.get('/security/risk-score'),
+  getBLODeviceMonitoring: () => api.get('/security/blo-devices'),
 };
 
 // Ledger

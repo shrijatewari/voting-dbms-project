@@ -47,8 +47,13 @@ export default function DuplicateDetectionDashboard() {
     setRunning(true);
     try {
       const result = await duplicateService.runDetection({ scope, threshold, district, state });
-      setDuplicates(result.data.duplicates || []);
-      alert(`Duplicate detection completed! Found ${result.data.duplicates?.length || 0} potential duplicates.`);
+      // Handle different response formats
+      const duplicatesData = result.data?.duplicates || result.data?.data?.duplicates || [];
+      const duplicatesFound = Array.isArray(duplicatesData) ? duplicatesData.length : 0;
+      setDuplicates(Array.isArray(duplicatesData) ? duplicatesData : []);
+      alert(`Duplicate detection completed! Found ${duplicatesFound} potential duplicates.`);
+      // Reload duplicates after detection
+      await loadDuplicates();
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to run duplicate detection');
     } finally {
@@ -70,9 +75,13 @@ export default function DuplicateDetectionDashboard() {
         district: district || undefined,
         state: state || undefined
       });
-      setMlResults(result.data);
-      setDuplicates(result.data.duplicates || []);
-      alert(`ML duplicate detection completed! Found ${result.data.duplicates_found || 0} duplicates.`);
+      const mlData = result.data?.data || result.data || {};
+      setMlResults(mlData);
+      const duplicatesData = mlData.duplicates || [];
+      setDuplicates(Array.isArray(duplicatesData) ? duplicatesData : []);
+      alert(`ML duplicate detection completed! Found ${mlData.duplicates_found || duplicatesData.length || 0} duplicates.`);
+      // Reload duplicates after detection
+      await loadDuplicates();
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to run ML duplicate detection');
     } finally {
@@ -86,8 +95,7 @@ export default function DuplicateDetectionDashboard() {
       await duplicateService.resolve(duplicateId, { action, note: `Resolved as ${action}` });
       alert('Duplicate resolved successfully!');
       // Reload duplicates
-      const result = await duplicateService.getAll(1, 100, false);
-      setDuplicates(result.data.duplicates || []);
+      await loadDuplicates();
     } catch (err: any) {
       alert('Failed to resolve duplicate: ' + (err.response?.data?.error || err.message));
     }
@@ -99,10 +107,23 @@ export default function DuplicateDetectionDashboard() {
 
   const loadDuplicates = async () => {
     try {
+      setLoading(true);
       const result = await duplicateService.getAll(1, 100, false);
-      setDuplicates(result.data.duplicates || []);
+      // Handle different response formats
+      const duplicatesData = result.data?.duplicates || result.data?.data?.duplicates || result.data || [];
+      if (Array.isArray(duplicatesData)) {
+        setDuplicates(duplicatesData);
+      } else if (duplicatesData && typeof duplicatesData === 'object' && duplicatesData.duplicates) {
+        setDuplicates(duplicatesData.duplicates);
+      } else {
+        setDuplicates([]);
+      }
     } catch (err: any) {
       console.error('Failed to load duplicates:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load duplicates');
+      setDuplicates([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -197,6 +218,29 @@ export default function DuplicateDetectionDashboard() {
             </div>
           </div>
 
+          {/* Summary Stats */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Duplicate Detection Summary</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Total Flagged Duplicates</p>
+                <p className="text-2xl font-bold text-blue-600">{duplicates.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Unresolved</p>
+                <p className="text-2xl font-bold text-orange-600">{duplicates.filter((d: any) => !d.resolved).length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Resolved</p>
+                <p className="text-2xl font-bold text-green-600">{duplicates.filter((d: any) => d.resolved).length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Current Threshold</p>
+                <p className="text-2xl font-bold text-gray-600">{(threshold * 100).toFixed(0)}%</p>
+              </div>
+            </div>
+          </div>
+
           {/* ML Results Summary */}
           {mlResults && (
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
@@ -236,19 +280,19 @@ export default function DuplicateDetectionDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {duplicates.map((dup, idx) => (
-                  <tr key={idx}>
+                  <tr key={dup.check_id || dup.duplicate_id || idx}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">ID: {dup.voter_id_1 || dup.voter_1?.voter_id}</p>
-                        <p className="text-sm text-gray-500">{dup.voter_1?.name || dup.data_1?.name || 'N/A'}</p>
-                        <p className="text-xs text-gray-400">{dup.voter_1?.aadhaar_number || dup.data_1?.aadhaar_number || 'N/A'}</p>
+                        <p className="text-sm font-medium text-gray-900">ID: {dup.voter_id_1 || dup.voter_1?.voter_id || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{dup.voter1_name || dup.voter_1?.name || dup.data_1?.name || 'N/A'}</p>
+                        <p className="text-xs text-gray-400">{dup.voter1_aadhaar || dup.voter_1?.aadhaar_number || dup.data_1?.aadhaar_number || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">ID: {dup.voter_id_2 || dup.voter_2?.voter_id}</p>
-                        <p className="text-sm text-gray-500">{dup.voter_2?.name || dup.data_2?.name || 'N/A'}</p>
-                        <p className="text-xs text-gray-400">{dup.voter_2?.aadhaar_number || dup.data_2?.aadhaar_number || 'N/A'}</p>
+                        <p className="text-sm font-medium text-gray-900">ID: {dup.voter_id_2 || dup.voter_2?.voter_id || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{dup.voter2_name || dup.voter_2?.name || dup.data_2?.name || 'N/A'}</p>
+                        <p className="text-xs text-gray-400">{dup.voter2_aadhaar || dup.voter_2?.aadhaar_number || dup.data_2?.aadhaar_number || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -271,21 +315,21 @@ export default function DuplicateDetectionDashboard() {
                         {hasPermission('duplicates.resolve') ? (
                           <>
                             <button
-                              onClick={() => resolveDuplicate(dup.duplicate_id || idx, 'merge')}
+                              onClick={() => resolveDuplicate(dup.check_id || dup.duplicate_id || idx, 'merge')}
                               className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
                               title="Merge duplicate records"
                             >
                               Merge
                             </button>
                             <button
-                              onClick={() => resolveDuplicate(dup.duplicate_id || idx, 'mark-as-ghost')}
+                              onClick={() => resolveDuplicate(dup.check_id || dup.duplicate_id || idx, 'mark-as-ghost')}
                               className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
                               title="Mark as ghost (fraudulent) records"
                             >
                               Mark Ghost
                             </button>
                             <button
-                              onClick={() => resolveDuplicate(dup.duplicate_id || idx, 'reject')}
+                              onClick={() => resolveDuplicate(dup.check_id || dup.duplicate_id || idx, 'reject')}
                               className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
                               title="Reject duplicate flag"
                             >
@@ -305,7 +349,12 @@ export default function DuplicateDetectionDashboard() {
             </table>
             {duplicates.length === 0 && !loading && (
               <div className="text-center py-8 text-gray-500">
-                No duplicates found. Run detection to find potential duplicates.
+                {error ? error : 'No duplicates found. Run detection to find potential duplicates.'}
+              </div>
+            )}
+            {loading && (
+              <div className="text-center py-8 text-gray-500">
+                Loading duplicates...
               </div>
             )}
           </div>

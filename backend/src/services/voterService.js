@@ -85,10 +85,32 @@ class VoterService {
         }
 
         // ========== VALIDATION PIPELINE ==========
-        // 1. Address Validation
+        // 1. Voter Name Validation (own name)
+        let voterNameValidation = null;
+        if (voterData.name) {
+          try {
+            voterNameValidation = await nameValidationService.validateName(voterData.name, 'first_name');
+            
+            if (!voterNameValidation.valid || voterNameValidation.validationResult === 'rejected') {
+              await connection.rollback();
+              connection.release();
+              throw new Error(`Name validation failed: ${voterNameValidation.reason || 'Invalid name format'}. Please provide a valid name.`);
+            } else if (voterNameValidation.validationResult === 'flagged') {
+              registrationStatus = 'pending_review';
+              validationFlags.push('voter_name_flagged');
+            }
+          } catch (nameError) {
+            if (nameError.message.includes('validation failed')) {
+              throw nameError; // Re-throw validation failures
+            }
+            console.warn('Voter name validation error:', nameError.message);
+            registrationStatus = 'pending_review';
+            validationFlags.push('name_validation_error');
+          }
+        }
+
+        // 2. Address Validation
         let addressValidation = null;
-        let registrationStatus = 'active';
-        const validationFlags = [];
         
         if (voterData.house_number || voterData.street || voterData.village_city) {
           try {
@@ -119,7 +141,7 @@ class VoterService {
           }
         }
 
-        // 2. Name Validation (Father Name)
+        // 3. Name Validation (Father Name)
         let fatherNameValidation = null;
         if (voterData.father_name) {
           try {
@@ -143,7 +165,7 @@ class VoterService {
           }
         }
 
-        // 3. Name Validation (Mother Name if provided)
+        // 4. Name Validation (Mother Name if provided)
         let motherNameValidation = null;
         if (voterData.mother_name) {
           try {
@@ -156,7 +178,7 @@ class VoterService {
           }
         }
 
-        // 4. Name Validation (Guardian Name if provided)
+        // 5. Name Validation (Guardian Name if provided)
         let guardianNameValidation = null;
         if (voterData.guardian_name) {
           try {
@@ -181,8 +203,20 @@ class VoterService {
         
         // Build dynamic query with mandatory fields
         // normalizedEmail already declared above, just normalize gender
-        const normalizedGender = voterData.gender ? 
-          voterData.gender.charAt(0).toUpperCase() + voterData.gender.slice(1).toLowerCase() : null;
+        let normalizedGender = null;
+        if (voterData.gender) {
+          const genderLower = voterData.gender.toLowerCase().trim();
+          // Map various gender inputs to database values
+          if (genderLower === 'male' || genderLower === 'm') {
+            normalizedGender = 'male';
+          } else if (genderLower === 'female' || genderLower === 'f') {
+            normalizedGender = 'female';
+          } else if (genderLower === 'transgender' || genderLower === 'trans' || genderLower === 't') {
+            normalizedGender = 'transgender';
+          } else {
+            normalizedGender = 'other';
+          }
+        }
         
         const fields = [
           'name', 'dob', 'aadhaar_number', 'biometric_hash', 'is_verified',
@@ -195,9 +229,9 @@ class VoterService {
         ];
         const values = [
           voterData.name ? voterData.name.trim() : null,
-          voterData.dob,
-          voterData.aadhaar_number ? voterData.aadhaar_number.trim() : null,
-          tempHash,
+          voterData.dob || null,
+          normalizedAadhaar,
+          voterData.biometric_hash || tempHash,
           voterData.is_verified || false,
           normalizedEmail && normalizedEmail.length > 0 ? normalizedEmail : null,
           normalizedMobile && normalizedMobile.length > 0 ? normalizedMobile : null,
@@ -309,6 +343,7 @@ class VoterService {
               const taskDetails = {
                 validation_flags: validationFlags,
                 address_quality_score: addressValidation?.qualityScore,
+                voter_name_quality_score: voterNameValidation?.qualityScore,
                 name_quality_score: fatherNameValidation?.qualityScore
               };
 
@@ -327,6 +362,7 @@ class VoterService {
                   details: taskDetails,
                   validation_scores: {
                     address: addressValidation?.qualityScore,
+                    voter_name: voterNameValidation?.qualityScore,
                     father_name: fatherNameValidation?.qualityScore,
                     mother_name: motherNameValidation?.qualityScore,
                     guardian_name: guardianNameValidation?.qualityScore
@@ -341,7 +377,7 @@ class VoterService {
         }
 
         // Log validation audit
-        if (addressValidation || fatherNameValidation) {
+        if (addressValidation || voterNameValidation || fatherNameValidation) {
           setImmediate(async () => {
             try {
               const validationAuditService = require('./validationAuditService');
@@ -354,10 +390,19 @@ class VoterService {
                   flags: addressValidation.flags
                 });
               }
+              if (voterNameValidation) {
+                await validationAuditService.logValidation({
+                  voter_id: voterId,
+                  validation_type: 'voter_name',
+                  validation_result: voterNameValidation.validationResult,
+                  quality_scores: { voter_name: voterNameValidation.qualityScore },
+                  flags: voterNameValidation.flags
+                });
+              }
               if (fatherNameValidation) {
                 await validationAuditService.logValidation({
                   voter_id: voterId,
-                  validation_type: 'name',
+                  validation_type: 'father_name',
                   validation_result: fatherNameValidation.validationResult,
                   quality_scores: { father_name: fatherNameValidation.qualityScore },
                   flags: fatherNameValidation.flags

@@ -9,7 +9,7 @@ const { requireMinimumRole, requirePermission } = require('../middleware/rbac');
 router.post('/', validateVoterRegistration, voterController.createVoter);
 
 // GET /voters/:id - Read voter (requires voters.view permission)
-router.get('/:id', requirePermission('voters.view'), voterController.getVoterById);
+router.get('/:id', ...requirePermission('voters.view'), voterController.getVoterById);
 
 // GET /voters - List voters (requires voters.view permission)
 // GET /voters?aadhaar=XXX - Search by Aadhaar (public for landing page)
@@ -27,10 +27,10 @@ router.get('/', (req, res, next) => {
 });
 
 // PUT /voters/:id - Update voter (requires voters.edit permission)
-router.put('/:id', requirePermission('voters.edit'), voterController.updateVoter);
+router.put('/:id', ...requirePermission('voters.edit'), voterController.updateVoter);
 
 // DELETE /voters/:id - Delete voter (requires voters.delete permission)
-router.delete('/:id', requirePermission('voters.delete'), voterController.deleteVoter);
+router.delete('/:id', ...requirePermission('voters.delete'), voterController.deleteVoter);
 
 // POST /voters/verify-biometric - Verify biometric (public for registration)
 router.post('/verify-biometric', validate(biometricVerificationSchema), voterController.verifyBiometric);

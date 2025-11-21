@@ -66,13 +66,16 @@ export default function OTPVerification({ identifier, otpType, onVerify, onCance
 
     try {
       const response = await otpService.verify(identifier, otpType, otp);
-      if (response.data.success) {
+      // Backend returns { success: boolean, data: { verified: boolean, message: string } }
+      const verified = response.data.success === true || response.data.data?.verified === true;
+      if (verified) {
         onVerify(true);
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError(response.data.data?.message || 'Invalid OTP. Please try again.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Invalid OTP');
+      const errorMsg = err.response?.data?.error || err.response?.data?.data?.message || err.message || 'Invalid OTP';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

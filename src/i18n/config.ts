@@ -30,6 +30,10 @@ i18n
       pa: { translation: paTranslations },
     },
     fallbackLng: 'en',
+    lng: (() => {
+      const saved = localStorage.getItem('i18nextLng');
+      return saved || 'en';
+    })(),
     debug: false,
     interpolation: {
       escapeValue: false,
@@ -37,7 +41,16 @@ i18n
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
+      lookupLocalStorage: 'i18nextLng',
+      checkWhitelist: true,
     },
+    react: {
+      useSuspense: false,
+    },
+    // Ensure language is loaded immediately
+    load: 'languageOnly',
+    // Support all language codes
+    supportedLngs: ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa'],
   });
 
 export default i18n;

@@ -40,31 +40,46 @@ export default function LanguageSelector({ compact = false, showLabel = true }: 
   }, []);
 
   const changeLanguage = async (langCode: string) => {
+    if (saving) return; // Prevent multiple clicks
+    
     try {
       setSaving(true);
-      await i18n.changeLanguage(langCode);
+      
+      // Set language in localStorage FIRST (before anything else)
       localStorage.setItem('i18nextLng', langCode);
       
-      // Save to user profile if logged in
+      // Close dropdown immediately
+      setIsOpen(false);
+      
+      // Change language in i18n
+      await i18n.changeLanguage(langCode);
+      
+      // Reload resources to ensure translations are loaded
+      await i18n.reloadResources(langCode);
+      
+      // Save to user profile if logged in (non-blocking)
       const userData = localStorage.getItem('user_data');
       if (userData) {
         try {
           const user = JSON.parse(userData);
           if (user.voter_id) {
-            await profileService.updateProfile(user.voter_id, {
+            profileService.updateProfile(user.voter_id, {
               preferred_language: langCode
+            }).catch(err => {
+              console.error('Failed to save language preference:', err);
             });
           }
         } catch (err) {
-          console.error('Failed to save language preference:', err);
+          // Ignore parsing errors
         }
       }
       
-      setIsOpen(false);
+      // Reload page to apply language change
+      window.location.reload();
     } catch (error) {
       console.error('Failed to change language:', error);
-    } finally {
-      setSaving(false);
+      // Still reload even on error
+      window.location.reload();
     }
   };
 
@@ -88,10 +103,15 @@ export default function LanguageSelector({ compact = false, showLabel = true }: 
             {languages.map((lang) => (
               <button
                 key={lang.code}
-                onClick={() => changeLanguage(lang.code)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  changeLanguage(lang.code);
+                }}
                 className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center justify-between ${
                   i18n.language === lang.code ? 'bg-blue-50 text-primary-navy font-semibold' : 'text-gray-700'
                 }`}
+                disabled={saving}
               >
                 <div>
                   <div className="font-medium">{lang.native}</div>
@@ -135,10 +155,15 @@ export default function LanguageSelector({ compact = false, showLabel = true }: 
             {languages.map((lang) => (
               <button
                 key={lang.code}
-                onClick={() => changeLanguage(lang.code)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  changeLanguage(lang.code);
+                }}
                 className={`w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-between mb-1 ${
                   i18n.language === lang.code ? 'bg-blue-100 text-primary-navy font-semibold border-2 border-primary-navy' : 'text-gray-700'
                 }`}
+                disabled={saving}
               >
                 <div className="flex items-center space-x-3">
                   <div>

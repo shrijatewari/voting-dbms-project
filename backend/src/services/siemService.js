@@ -90,9 +90,9 @@ class SIEMService {
          FROM security_events
          WHERE event_type = 'login'
          AND timestamp > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-         GROUP BY user_id, source_ip
+         GROUP BY user_id, source_ip, DATE(timestamp)
          HAVING logins = 1
-         ORDER BY last_login DESC
+         ORDER BY MAX(timestamp) DESC
          LIMIT 50`
       );
       

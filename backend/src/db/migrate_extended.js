@@ -29,7 +29,7 @@ async function runExtendedMigrations() {
     if (!columnNames.includes('gender')) {
       await connection.query(`
         ALTER TABLE voters 
-        ADD COLUMN gender ENUM('male', 'female', 'other') AFTER dob
+        ADD COLUMN gender ENUM('male', 'female', 'transgender', 'other') AFTER dob
       `);
     }
     

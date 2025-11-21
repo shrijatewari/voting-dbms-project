@@ -49,25 +49,39 @@ export default function VoterManagement() {
 
   const fetchVoters = async () => {
     try {
+      setLoading(true);
       const response = await voterService.getAll(page, 20);
-      setVoters(response.data.voters || []);
-      setTotalPages(response.data.pagination?.totalPages || 1);
-    } catch (error) {
+      console.log('Voters response:', response);
+      
+      // Handle different response formats
+      const votersData = response.data?.voters || response.data?.data?.voters || response.voters || [];
+      const pagination = response.data?.pagination || response.data?.data?.pagination || response.pagination || {};
+      
+      console.log(`Fetched ${votersData.length} voters`);
+      setVoters(Array.isArray(votersData) ? votersData : []);
+      setTotalPages(pagination.totalPages || 1);
+    } catch (error: any) {
       console.error('Failed to fetch voters:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      setVoters([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = async () => {
-    // Implement search logic
     setLoading(true);
     try {
-      const response = await voterService.getAll(1, 20);
-      let filtered = response.data.voters || [];
+      // Fetch all voters for client-side filtering (or implement backend search)
+      const response = await voterService.getAll(1, 1000);
+      let allVoters = response.data?.voters || response.data?.data?.voters || response.voters || [];
       
       if (searchTerm) {
-        filtered = filtered.filter((v: any) => {
+        allVoters = allVoters.filter((v: any) => {
           switch (searchType) {
             case 'name':
               return v.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -83,9 +97,12 @@ export default function VoterManagement() {
         });
       }
       
-      setVoters(filtered);
-    } catch (error) {
+      setVoters(allVoters);
+      setPage(1);
+      setTotalPages(1);
+    } catch (error: any) {
       console.error('Search failed:', error);
+      setVoters([]);
     } finally {
       setLoading(false);
     }
@@ -209,7 +226,11 @@ export default function VoterManagement() {
                 ) : voters.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                      No voters found
+                      <div>
+                        <p className="mb-2">No voters found</p>
+                        <p className="text-xs text-gray-400">Make sure you're logged in as admin and have proper permissions</p>
+                        <p className="text-xs text-gray-400 mt-1">Or run: npm --prefix backend run seed:voters</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (

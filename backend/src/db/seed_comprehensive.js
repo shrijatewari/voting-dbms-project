@@ -144,7 +144,7 @@ async function seedComprehensiveDatabase() {
     console.log(`✅ Seeded ${voters.length} voters\n`);
 
     // ============================================
-    // 2. SEED ELECTIONS (5 elections)
+    // 2. SEED ELECTIONS (20 elections with variety)
     // ============================================
     console.log('🗳️ Seeding elections...');
     const elections = [];
@@ -153,17 +153,31 @@ async function seedComprehensiveDatabase() {
       'State Assembly Election - Maharashtra 2024',
       'Municipal Corporation Election - Delhi 2024',
       'Panchayat Election - Karnataka 2024',
-      'By-Election - Constituency 12'
+      'By-Election - Constituency 12',
+      'Lok Sabha General Election 2025',
+      'State Assembly Election - Tamil Nadu 2025',
+      'State Assembly Election - West Bengal 2025',
+      'State Assembly Election - Gujarat 2025',
+      'State Assembly Election - Rajasthan 2025',
+      'Municipal Corporation Election - Mumbai 2025',
+      'Municipal Corporation Election - Bangalore 2025',
+      'Municipal Corporation Election - Chennai 2025',
+      'Municipal Corporation Election - Kolkata 2025',
+      'Panchayat Election - Kerala 2025',
+      'Panchayat Election - Andhra Pradesh 2025',
+      'Panchayat Election - Telangana 2025',
+      'By-Election - Constituency 15',
+      'By-Election - Constituency 18',
+      'Rajya Sabha Election 2025'
     ];
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() + (i * 30));
+      startDate.setDate(startDate.getDate() + (i * 15)); // Spread over months
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
-      
-      const statuses = ['upcoming', 'active', 'completed'];
-      const status = i < 2 ? 'upcoming' : i === 2 ? 'active' : 'completed';
+      // Distribute status: 3 active, 5 upcoming, 12 completed
+      const status = i < 3 ? 'active' : (i < 8 ? 'upcoming' : 'completed');
       
       const [result] = await connection.query(
         'INSERT INTO elections (title, start_date, end_date, status) VALUES (?, ?, ?, ?)',

@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { applicationService } from '../services/api';
+
+// Cache for application data
+const applicationCache = new Map<string, { application: any; trackingHistory: any[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function ApplicationTracking() {
   const [applicationId, setApplicationId] = useState('');
@@ -7,10 +11,39 @@ export default function ApplicationTracking() {
   const [trackingHistory, setTrackingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
-  const handleSearch = async () => {
-    if (!applicationId.trim()) {
+  // Check cache first
+  const getCachedData = useCallback((id: string) => {
+    const cached = applicationCache.get(id);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached;
+    }
+    return null;
+  }, []);
+
+  // Save to cache
+  const saveToCache = useCallback((id: string, app: any, history: any[]) => {
+    applicationCache.set(id, {
+      application: app,
+      trackingHistory: history,
+      timestamp: Date.now()
+    });
+  }, []);
+
+  const handleSearch = useCallback(async (searchId?: string) => {
+    const idToSearch = searchId || applicationId.trim();
+    if (!idToSearch) {
       setError('Please enter an Application ID');
+      return;
+    }
+
+    // Check cache first
+    const cached = getCachedData(idToSearch);
+    if (cached) {
+      setApplication(cached.application);
+      setTrackingHistory(cached.trackingHistory);
+      setError('');
       return;
     }
 
@@ -20,21 +53,69 @@ export default function ApplicationTracking() {
     setTrackingHistory([]);
 
     try {
-      const [appResponse, trackingResponse] = await Promise.all([
-        applicationService.getApplication(applicationId),
-        applicationService.getTrackingHistory(applicationId)
-      ]);
+      // Use optimized endpoint that returns both in one call
+      const appResponse = await applicationService.getApplication(idToSearch, true);
+      
+      const appData = appResponse.data.data;
+      const historyData = appResponse.data.trackingHistory || [];
 
-      setApplication(appResponse.data.data);
-      setTrackingHistory(trackingResponse.data.data);
+      setApplication(appData);
+      setTrackingHistory(historyData);
+      
+      // Save to cache
+      if (appData) {
+        saveToCache(idToSearch, appData, historyData);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Application not found');
+      const errorMsg = err.response?.data?.error || 'Application not found';
+      setError(errorMsg);
+      // Clear cache on error
+      applicationCache.delete(idToSearch);
     } finally {
       setLoading(false);
     }
-  };
+  }, [applicationId, getCachedData, saveToCache]);
 
-  const getStatusColor = (status: string) => {
+  // Debounced search for auto-search on typing
+  useEffect(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    if (applicationId.trim().length >= 10) {
+      const timer = setTimeout(() => {
+        handleSearch(applicationId.trim());
+      }, 500); // 500ms debounce
+      setDebounceTimer(timer);
+    } else {
+      setApplication(null);
+      setTrackingHistory([]);
+      setError('');
+    }
+
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [applicationId]);
+
+  // Auto-load from URL params or localStorage if available
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlAppId = urlParams.get('id');
+    const storedAppId = localStorage.getItem('last_application_id');
+    
+    if (urlAppId) {
+      setApplicationId(urlAppId.toUpperCase());
+      handleSearch(urlAppId.toUpperCase());
+    } else if (storedAppId) {
+      setApplicationId(storedAppId);
+      // Don't auto-search stored ID, let user click
+    }
+  }, []);
+
+  const getStatusColor = useCallback((status: string) => {
     const colors: any = {
       submitted: 'bg-gray-500',
       under_review: 'bg-yellow-500',
@@ -44,11 +125,22 @@ export default function ApplicationTracking() {
       epic_generated: 'bg-purple-500'
     };
     return colors[status] || 'bg-gray-500';
-  };
+  }, []);
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = useCallback((status: string) => {
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
+  }, []);
+
+  // Memoize formatted date
+  const formatDate = useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-light py-12 px-4">
@@ -67,9 +159,12 @@ export default function ApplicationTracking() {
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
             <button
-              onClick={handleSearch}
+              onClick={() => {
+                localStorage.setItem('last_application_id', applicationId.trim());
+                handleSearch();
+              }}
               className="btn-primary"
-              disabled={loading}
+              disabled={loading || !applicationId.trim()}
             >
               {loading ? 'Searching...' : 'Track'}
             </button>
@@ -124,7 +219,7 @@ export default function ApplicationTracking() {
                         {getStatusLabel(entry.status)}
                       </span>
                       <span className="text-sm text-gray-500">
-                        {new Date(entry.status_changed_at).toLocaleString()}
+                        {formatDate(entry.status_changed_at)}
                       </span>
                     </div>
                     {entry.remarks && (

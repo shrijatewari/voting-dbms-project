@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, useAnimation, useInView } from 'framer-motion';
 import { useSpring, animated, config } from '@react-spring/web';
 import LanguageSelector from '../components/LanguageSelector';
+import api from '../config/api';
 
 export default function EnhancedLandingPage() {
   const { t } = useTranslation();
@@ -53,41 +54,34 @@ export default function EnhancedLandingPage() {
     setLoading(true);
     setVoterStatus(null);
     try {
-      // Check database first - search for voter by Aadhaar
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/voters?aadhaar=${aadhaarNumber}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      // Use the API service instead of direct fetch
+      const response = await api.get(`/voters?aadhaar=${aadhaarNumber}`);
+      console.log('Voter status response:', response);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const voter = data.data[0];
-          setVoterStatus({
-            name: voter.name,
-            aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
-            status: voter.is_verified ? 'Verified' : 'Pending Verification',
-            epic_number: voter.epic_number || 'Not Generated',
-            polling_station: voter.polling_station || 'Not Assigned'
-          });
-        } else {
-          // No voter found in database
-          setVoterStatus({
-            name: null,
-            aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
-            status: 'Not Registered',
-            epic_number: null,
-            polling_station: null
-          });
-        }
+      const data = response.data;
+      if (data.success && data.data && data.data.length > 0) {
+        const voter = data.data[0];
+        setVoterStatus({
+          name: voter.name,
+          aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
+          status: voter.is_verified ? 'Verified' : 'Pending Verification',
+          epic_number: voter.epic_number || 'Not Generated',
+          polling_station: voter.polling_station || 'Not Assigned'
+        });
       } else {
-        throw new Error('Failed to check voter status');
+        // No voter found in database
+        setVoterStatus({
+          name: null,
+          aadhaar_masked: `XXXX-XXXX-${aadhaarNumber.substring(8)}`,
+          status: 'Not Registered',
+          epic_number: null,
+          polling_station: null
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking voter status:', error);
-      alert('Error checking voter status. Please try again.');
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to check voter status';
+      alert(`Error checking voter status: ${errorMsg}`);
       setVoterStatus(null);
     } finally {
       setLoading(false);

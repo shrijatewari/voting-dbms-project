@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { profileService } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { profileService, voterService } from '../services/api';
 
 interface ProfileCompletionModalProps {
   voterId: number;
@@ -8,18 +8,21 @@ interface ProfileCompletionModalProps {
 }
 
 export default function ProfileCompletionModal({ voterId, onComplete }: ProfileCompletionModalProps) {
+  const navigate = useNavigate();
   const [completion, setCompletion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [voterData, setVoterData] = useState<any>(null);
 
-  useEffect(() => {
-    // Don't check completion if no voterId provided
-    if (!voterId) {
-      setLoading(false);
-      return;
+  const fetchVoterData = async () => {
+    try {
+      const response = await voterService.getById(voterId);
+      const voter = response.data?.data || response.data;
+      setVoterData(voter);
+    } catch (error) {
+      console.warn('Failed to fetch voter data for modal:', error);
     }
-    checkCompletion();
-  }, [voterId]);
+  };
 
   const checkCompletion = async () => {
     // Check if user is admin before making request
@@ -50,8 +53,8 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
         }
         setCompletion(completionData);
         
-        // Show modal if completion is less than 80%
-        if (completionData.completionPercentage < 80) {
+        // Show modal if completion is less than 100% (always show for incomplete profiles)
+        if (completionData.completionPercentage < 100) {
           setShowModal(true);
         }
       } else {
@@ -81,6 +84,26 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Don't check completion if no voterId provided
+    if (!voterId) {
+      setLoading(false);
+      return;
+    }
+    
+    // Check if user dismissed the modal
+    const dismissedKey = `profile_modal_dismissed_${voterId}`;
+    const dismissed = localStorage.getItem(dismissedKey);
+    if (dismissed === 'true') {
+      setLoading(false);
+      return;
+    }
+    
+    checkCompletion();
+    fetchVoterData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voterId]);
 
   const getCompletionColor = (percentage: number) => {
     if (percentage < 50) return 'text-red-600';
@@ -112,15 +135,50 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-navy to-primary-royal text-white p-6 rounded-t-xl">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">⚠️ Profile Incomplete</h2>
-              <p className="text-white/90">Please complete your profile to continue</p>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-2">Complete Profile Now</h2>
+              <p className="text-white/90">Complete mandatory verification steps to access all features</p>
             </div>
-            <div className="text-right">
-              <div className={`text-4xl font-bold ${getCompletionColor(completion.completionPercentage)}`}>
-                {completion.completionPercentage}%
+            <div className="flex items-center gap-6">
+              {/* Aadhaar and Application Info */}
+              <div className="text-right bg-white/10 rounded-lg px-4 py-2">
+                {voterData?.aadhaar_number && (
+                  <div className="text-sm">
+                    <span className="text-white/80">Aadhaar: </span>
+                    <span className="font-semibold text-white">
+                      XXXX-XXXX-{voterData.aadhaar_number.substring(8)}
+                    </span>
+                  </div>
+                )}
+                {voterData?.application_id && (
+                  <div className="text-sm mt-1">
+                    <span className="text-white/80">Application: </span>
+                    <span className="font-semibold text-white">
+                      {voterData.application_id}
+                    </span>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-white/80">Complete</p>
+              <div className="text-right">
+                <div className={`text-4xl font-bold ${getCompletionColor(completion.completionPercentage)}`}>
+                  {completion.completionPercentage}%
+                </div>
+                <p className="text-sm text-white/80">Complete</p>
+              </div>
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  const dismissedKey = `profile_modal_dismissed_${voterId}`;
+                  localStorage.setItem(dismissedKey, 'true');
+                  setShowModal(false);
+                }}
+                className="text-white hover:text-gray-200 transition-colors p-2"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -188,30 +246,30 @@ export default function ProfileCompletionModal({ voterId, onComplete }: ProfileC
         {/* Actions */}
         <div className="p-6 border-t bg-gray-50 rounded-b-xl">
           <div className="flex gap-3">
-            <Link
-              to="/update-profile"
+            <button
               onClick={() => {
                 setShowModal(false);
                 if (onComplete) onComplete();
+                // Navigate to update profile page
+                navigate('/update-profile');
               }}
               className="flex-1 btn-primary text-center"
             >
-              Complete Profile Now
-            </Link>
-            {completion.completionPercentage >= 50 && (
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  if (onComplete) onComplete();
-                }}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-              >
-                Continue Later
-              </button>
-            )}
+              Complete Profile Now →
+            </button>
+            <button
+              onClick={() => {
+                const dismissedKey = `profile_modal_dismissed_${voterId}`;
+                localStorage.setItem(dismissedKey, 'true');
+                setShowModal(false);
+              }}
+              className="btn-secondary px-4"
+            >
+              Continue Later
+            </button>
           </div>
           <p className="text-xs text-gray-500 text-center mt-3">
-            You can update your profile anytime from the dashboard
+            You can update your profile anytime from the dashboard. Note: Sensitive activities like voting require complete profile.
           </p>
         </div>
       </div>

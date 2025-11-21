@@ -11,7 +11,7 @@ router.get('/:epicNumber', authenticateToken, epicController.getEPICDetails);
 router.get('/:epicNumber/download', authenticateToken, epicController.downloadEPIC);
 
 // GET /epic/voter/:voterId/generate - Generate EPIC (requires ero role minimum)
-router.get('/voter/:voterId/generate', requireMinimumRole('ero'), epicController.generateEPICForVoter);
+router.get('/voter/:voterId/generate', ...requireMinimumRole('ero'), epicController.generateEPICForVoter);
 
 module.exports = router;
 

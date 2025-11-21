@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const crypto = require('crypto');
+const nameValidationService = require('./nameValidationService');
 
 /**
  * Profile Service
@@ -163,6 +164,35 @@ class ProfileService {
       const values = [];
       const historyEntries = [];
 
+      // Validate names before updating
+      if (profileData.name) {
+        const nameValidation = await nameValidationService.validateName(profileData.name, 'first_name');
+        if (!nameValidation.valid || nameValidation.validationResult === 'rejected') {
+          throw new Error(`Name validation failed: ${nameValidation.reason || 'Invalid name format'}`);
+        }
+      }
+      
+      if (profileData.father_name) {
+        const fatherNameValidation = await nameValidationService.validateName(profileData.father_name, 'father_name');
+        if (!fatherNameValidation.valid || fatherNameValidation.validationResult === 'rejected') {
+          throw new Error(`Father name validation failed: ${fatherNameValidation.reason || 'Invalid name format'}`);
+        }
+      }
+      
+      if (profileData.mother_name) {
+        const motherNameValidation = await nameValidationService.validateName(profileData.mother_name, 'mother_name');
+        if (!motherNameValidation.valid || motherNameValidation.validationResult === 'rejected') {
+          throw new Error(`Mother name validation failed: ${motherNameValidation.reason || 'Invalid name format'}`);
+        }
+      }
+      
+      if (profileData.spouse_name) {
+        const spouseNameValidation = await nameValidationService.validateName(profileData.spouse_name, 'first_name');
+        if (!spouseNameValidation.valid || spouseNameValidation.validationResult === 'rejected') {
+          throw new Error(`Spouse name validation failed: ${spouseNameValidation.reason || 'Invalid name format'}`);
+        }
+      }
+
       // Build update query dynamically - ALL FIELDS
       const allowedFields = [
         // Personal Information
@@ -203,6 +233,20 @@ class ProfileService {
 
       // Date fields that need format conversion (ISO datetime -> DATE)
       const dateFields = ['dob', 'biometric_reverification_date', 'consent_date'];
+      
+      // Normalize gender if provided
+      if (profileData.gender) {
+        const genderLower = profileData.gender.toLowerCase().trim();
+        if (genderLower === 'male' || genderLower === 'm') {
+          profileData.gender = 'male';
+        } else if (genderLower === 'female' || genderLower === 'f') {
+          profileData.gender = 'female';
+        } else if (genderLower === 'transgender' || genderLower === 'trans' || genderLower === 't') {
+          profileData.gender = 'transgender';
+        } else {
+          profileData.gender = 'other';
+        }
+      }
       
       // Helper function to convert any date format to YYYY-MM-DD
       const convertToDateString = (value) => {

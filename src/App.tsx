@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
 import './i18n/config'; // Initialize i18n
 import LandingPage from './pages/LandingPage';
 import EnhancedLandingPage from './pages/EnhancedLandingPage';
@@ -25,7 +25,7 @@ import AppealsManagement from './pages/AppealsManagement';
 import RevisionAnnouncements from './pages/RevisionAnnouncements';
 import CommunicationsPortal from './pages/CommunicationsPortal';
 import DataImportDashboard from './pages/DataImportDashboard';
-import SecuritySIEMDashboard from './pages/SecuritySIEMDashboard';
+import SecuritySIEMDashboard from './pages/admin/SecuritySIEMDashboard';
 import LedgerVerificationPage from './pages/LedgerVerificationPage';
 import EndToEndVerificationPage from './pages/EndToEndVerificationPage';
 import VoterManagement from './pages/admin/VoterManagement';
@@ -90,25 +90,49 @@ function App() {
     minimumRole?: string;
     allowedRoles?: string[];
   }) => {
-    if (!user) {
-      return <Navigate to="/login" />;
-    }
+    const location = useLocation();
     
-    const role = userRole.toLowerCase();
+    // Use useMemo to prevent infinite loops - check both state and localStorage
+    const shouldRedirect = useMemo(() => {
+      // Check localStorage first (more reliable for new logins)
+      const token = localStorage.getItem('auth_token');
+      const userData = localStorage.getItem('user_data');
+      
+      if (!token || !userData) {
+        return '/login';
+      }
+      
+      // Get role from localStorage or state
+      let role = userRole.toLowerCase();
+      if (!user || role === 'citizen') {
+        try {
+          const parsed = JSON.parse(userData);
+          role = (parsed.role || 'citizen').toLowerCase();
+        } catch (e) {
+          return '/login';
+        }
+      }
+      
+      // Check if admin access required
+      if (adminOnly && !isAdminRole(role)) {
+        return '/dashboard';
+      }
+      
+      // Check if specific roles are allowed
+      if (allowedRoles && !allowedRoles.includes(role)) {
+        return '/dashboard';
+      }
+      
+      // Check minimum role requirement
+      if (!hasMinimumRole(role, minimumRole)) {
+        return '/dashboard';
+      }
+      
+      return null;
+    }, [user, userRole, adminOnly, minimumRole, allowedRoles]);
     
-    // Check if admin access required
-    if (adminOnly && !isAdminRole(role)) {
-      return <Navigate to="/dashboard" />;
-    }
-    
-    // Check if specific roles are allowed
-    if (allowedRoles && !allowedRoles.includes(role)) {
-      return <Navigate to="/dashboard" />;
-    }
-    
-    // Check minimum role requirement
-    if (!hasMinimumRole(role, minimumRole)) {
-      return <Navigate to="/dashboard" />;
+    if (shouldRedirect && location.pathname !== shouldRedirect) {
+      return <Navigate to={shouldRedirect} replace />;
     }
     
     return children;
@@ -123,6 +147,8 @@ function App() {
           setUser(userData);
           const role = (userData?.role || 'citizen').toLowerCase();
           setUserRole(role);
+        }} setIsAdmin={(isAdmin: boolean) => {
+          // Role is already set above
         }} />} />
         
         <Route
@@ -163,7 +189,7 @@ function App() {
         <Route
           path="/admin/ai-services"
           element={
-            <ProtectedRoute adminOnly minimumRole="deo">
+            <ProtectedRoute adminOnly minimumRole="admin">
               <AIServicesDashboard />
             </ProtectedRoute>
           }
