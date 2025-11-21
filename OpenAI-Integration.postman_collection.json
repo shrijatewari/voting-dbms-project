@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "SecureVote OpenAI Integration",
+    "description": "Postman collection for OpenAI integration endpoints. All endpoints require authentication and RBAC.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Explain Anomaly",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issueType\": \"duplicate_voter\",\n  \"region\": \"Mumbai\",\n  \"metrics\": {\n    \"count\": 5,\n    \"severity\": \"high\"\n  },\n  \"sample_count\": 5,\n  \"aggregated_flags\": [\"similarity_0.95\"]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/explain-anomaly",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "explain-anomaly"]
+        },
+        "description": "Explain why an anomaly occurred. Requires Admin2+ role."
+      }
+    },
+    {
+      "name": "Recommend Action",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issueType\": \"duplicate_voter\",\n  \"context\": \"Multiple voters with similar names\",\n  \"severity\": \"high\",\n  \"suggested_actions\": [\"Field verification\", \"Document review\"]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/recommend-action",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "recommend-action"]
+        },
+        "description": "Get AI-recommended actions. Requires Admin2+ role."
+      }
+    },
+    {
+      "name": "Summarize Security",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"timeWindow\": \"24h\",\n  \"categories\": [\"failed_login\", \"suspicious_activity\"],\n  \"counts\": {\n    \"failed_login\": 15,\n    \"suspicious_activity\": 3\n  },\n  \"topAlerts\": [\n    {\n      \"type\": \"failed_login\",\n      \"severity\": \"medium\",\n      \"timestamp\": \"2024-01-01T10:00:00Z\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/summarize-security",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "summarize-security"]
+        },
+        "description": "Summarize security events. Requires Admin3+ role."
+      }
+    },
+    {
+      "name": "Explain Name Quality",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name_metrics\": {\n    \"length\": 8,\n    \"entropy\": 2.5,\n    \"ngram_score\": 0.001,\n    \"freq_score\": 0.0\n  },\n  \"anonymized_example_id\": \"abc123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/name-quality-explain",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "name-quality-explain"]
+        },
+        "description": "Explain why a name was flagged. Requires Admin2+ role."
+      }
+    },
+    {
+      "name": "Document Summary",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ocr_summary\": {\n    \"fields\": [\"name\", \"dob\", \"address\"],\n    \"confidences\": {\n      \"name\": 0.95,\n      \"dob\": 0.88\n    },\n    \"missing\": [\"signature\"]\n  },\n  \"doc_type\": \"aadhaar\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/document-summary",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "document-summary"]
+        },
+        "description": "Analyze document verification. Requires Admin2+ or DocVerifier role."
+      }
+    },
+    {
+      "name": "Generate Notice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notice_type\": \"election\",\n  \"lang\": \"en\",\n  \"audience\": \"citizens\",\n  \"key_points\": [\n    \"Election date: 2024-05-15\",\n    \"Voter registration deadline: 2024-04-30\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/generate-notice",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "generate-notice"]
+        },
+        "description": "Generate multilingual notices. Requires Admin3+ role."
+      }
+    },
+    {
+      "name": "Debug Prompt",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issue\": \"System performance degradation\",\n  \"context\": \"API response times increased\",\n  \"logs_summary\": \"High database query times detected\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/debug-prompt",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "debug-prompt"]
+        },
+        "description": "Debug system issues. Requires ECI role only."
+      }
+    },
+    {
+      "name": "Get Call History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/history?limit=50",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "history"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "description": "Get user's OpenAI call history. Requires Admin2+ role."
+      }
+    },
+    {
+      "name": "Get Call Statistics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/ai/openai/stats?hours=24",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ai", "openai", "stats"],
+          "query": [
+            {
+              "key": "hours",
+              "value": "24"
+            }
+          ]
+        },
+        "description": "Get aggregate call statistics. Requires Admin3+ role."
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+
