@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { voterService } from '../../services/api';
+import AiButton from '../../components/AiButton';
 
 export default function VoterManagement() {
   const [voters, setVoters] = useState<any[]>([]);
@@ -158,8 +159,23 @@ export default function VoterManagement() {
     <div className="min-h-screen bg-gray-50">
       <div className="p-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Voter Management</h1>
-          <p className="text-gray-600">Search, view, and manage voter records</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">Voter Management</h1>
+              <p className="text-gray-600">Search, view, and manage voter records</p>
+            </div>
+            {/* AI Test Button */}
+            <AiButton
+              endpoint="recommend-action"
+              payload={{
+                issueType: "voter_management",
+                context: "Managing voter records",
+                severity: "info"
+              }}
+              buttonText="AI Help"
+              buttonIcon="🤖"
+            />
+          </div>
         </div>
 
         {/* Search Bar */}

@@ -240,6 +240,21 @@ export default function DuplicateDetectionDashboard() {
                 <p className="text-2xl font-bold text-gray-600">{(threshold * 100).toFixed(0)}%</p>
               </div>
             </div>
+            {/* AI Test Button - Always visible */}
+            <div className="mt-4 pt-4 border-t border-blue-200">
+              <p className="text-sm text-gray-600 mb-2">🤖 AI Features:</p>
+              <AiExplainPanel
+                issueType="duplicate_voter"
+                region="Test Region"
+                sampleCount={duplicates.length}
+                aggregatedFlags={['test_flag']}
+                metrics={{
+                  similarity_score: 0.85,
+                  match_fields: ['name', 'dob'],
+                  confidence: 'high',
+                }}
+              />
+            </div>
           </div>
 
           {/* ML Results Summary */}
