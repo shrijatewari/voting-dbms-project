@@ -65,7 +65,18 @@ export default function VoteCastingPage() {
       if (!allMandatoryComplete || completionData.completionPercentage < 100) {
         setProfileComplete(false);
         const incomplete = mandatoryCheckpoints.filter(key => !checkpoints[key]);
-        setBlockedReason(`Profile incomplete. Please complete: ${incomplete.map(k => k.replace('_', ' ')).join(', ')}`);
+        const incompleteNames = incomplete.map(k => {
+          const names: { [key: string]: string } = {
+            'aadhaar_otp': 'Aadhaar OTP Verification',
+            'email_otp': 'Email Verification',
+            'mobile_otp': 'Mobile Verification',
+            'address_doc': 'Address Document',
+            'personal_info': 'Personal Information',
+            'biometrics': 'Biometric Registration'
+          };
+          return names[k] || k.replace('_', ' ');
+        });
+        setBlockedReason(`Your profile is ${completionData.completionPercentage || 0}% complete. Please complete: ${incompleteNames.join(', ')}`);
       } else {
         setProfileComplete(true);
       }
@@ -90,14 +101,30 @@ export default function VoteCastingPage() {
   const handleVote = async () => {
     if (!selectedCandidate || !electionId) return;
 
-    // Check profile completion before allowing vote
+    // Double-check profile completion before allowing vote
     if (profileComplete === false) {
-      alert(`Cannot cast vote: ${blockedReason}\n\nPlease complete your profile first.`);
-      navigate('/update-profile');
+      const confirmGoToProfile = confirm(
+        `🚫 Cannot Cast Vote\n\n${blockedReason}\n\nWould you like to complete your profile now?`
+      );
+      if (confirmGoToProfile) {
+        navigate('/update-profile');
+      }
       return;
     }
 
+    // Re-check if still null (loading)
     if (profileComplete === null) {
+      // Re-check completion status
+      await checkProfileCompletion();
+      if (profileComplete === false) {
+        const confirmGoToProfile = confirm(
+          `🚫 Cannot Cast Vote\n\n${blockedReason}\n\nWould you like to complete your profile now?`
+        );
+        if (confirmGoToProfile) {
+          navigate('/update-profile');
+        }
+        return;
+      }
       alert('Please wait while we verify your profile completion...');
       return;
     }

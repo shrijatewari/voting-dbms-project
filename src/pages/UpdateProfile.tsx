@@ -573,29 +573,47 @@ export default function UpdateProfile() {
           }, 5000);
         }
         
-        // Reload profile and completion status
-        await loadProfile();
+        // Immediately update completion status with retry logic
+        let retries = 3;
+        let updatedCompletion = null;
         
-        // Update completion status after save
-        setTimeout(async () => {
+        while (retries > 0) {
           try {
+            // Wait a bit for backend to calculate completion (it's async)
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
             const updatedCompletionRes = await profileService.getCompletionStatus(voterId);
-            const updatedCompletion = updatedCompletionRes.data?.data;
+            updatedCompletion = updatedCompletionRes.data?.data;
             
             if (updatedCompletion) {
               setCompletion(updatedCompletion);
-              
-              if (updatedCompletion.completionPercentage >= 100) {
-                alert(`✅ ${t('profile_updated_successfully')} - Profile 100% Complete!`);
-              } else {
-                // Show success message with current completion
-                console.log(`✅ Section saved! Profile ${updatedCompletion.completionPercentage}% complete`);
-              }
+              break;
             }
           } catch (e) {
-            console.warn('Failed to check completion status:', e);
+            console.warn(`Failed to check completion status (retries left: ${retries - 1}):`, e);
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
           }
-        }, 500);
+        }
+        
+        // Show success message with updated completion percentage
+        const prevPercentage = completion?.completionPercentage || 0;
+        const newPercentage = updatedCompletion?.completionPercentage || prevPercentage;
+        
+        if (newPercentage >= 100) {
+          alert(`✅ Profile Updated Successfully!\n\nProfile is now 100% Complete! 🎉\n\nYou can now access all features including voting.`);
+        } else if (newPercentage > prevPercentage) {
+          // Show incremental progress
+          const increase = newPercentage - prevPercentage;
+          alert(`✅ Section Saved!\n\nProfile Completion: ${prevPercentage}% → ${newPercentage}% (+${increase}%)\n\nKeep going! Complete your profile to unlock voting.`);
+        } else {
+          alert(`✅ Section Saved!\n\nProfile Completion: ${newPercentage}%`);
+        }
+        
+        // Reload profile in background (non-blocking)
+        loadProfile().catch(e => console.warn('Failed to reload profile:', e));
       } else {
         throw new Error(response.data.error || 'Update failed');
       }

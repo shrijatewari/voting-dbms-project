@@ -147,6 +147,8 @@ class ProfileService {
   async updateProfile(voterId, profileData) {
     const connection = await pool.getConnection();
     try {
+      // Set lock wait timeout to 30 seconds
+      await connection.query('SET innodb_lock_wait_timeout = 30');
       await connection.beginTransaction();
 
       // Get current values for history
