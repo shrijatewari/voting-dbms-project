@@ -596,14 +596,8 @@ export default function VoterRegistration() {
         } else {
           errorMessage = backendError;
         }
-        setError(errorMessage);
       } else if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
         errorMessage = 'Network error: Please check your internet connection and ensure the backend server is running on http://localhost:3000';
-        setError(errorMessage);
-      } else {
-        // Show backend error message if available
-        errorMessage = backendError || 'Registration failed. Please try again.';
-        setError(errorMessage);
       } else if (err.response?.status === 409) {
         errorMessage = err.response?.data?.message || err.response?.data?.error || 'Duplicate registration detected';
       } else if (err.response?.data) {
