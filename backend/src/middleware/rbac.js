@@ -35,6 +35,7 @@ const ROLE_HIERARCHY = {
   VIEW_ONLY: 1,
   citizen: 1,
   // Legacy mappings
+  superadmin: 10,
   eci: 10,
   ceo: 9,
   deo: 8,
@@ -180,14 +181,20 @@ function hasMinimumRole(userRole, minimumRole) {
   const roleMappings = {
     'ECI': 'SUPERADMIN',
     'ADMIN': 'DEO',
-    'SUPERADMIN': 'SUPERADMIN'
+    'SUPERADMIN': 'SUPERADMIN',
+    'SUPERADMIN': 'SUPERADMIN' // Also handle lowercase
   };
   
-  const mappedUserRole = roleMappings[userRoleUpper] || userRoleUpper;
-  const mappedMinRole = roleMappings[minRoleUpper] || minRoleUpper;
+  // Normalize role names (handle both uppercase and lowercase)
+  const normalizedUserRole = userRoleUpper === 'SUPERADMIN' || userRole?.toLowerCase() === 'superadmin' ? 'SUPERADMIN' : userRoleUpper;
+  const normalizedMinRole = minRoleUpper === 'SUPERADMIN' || minimumRole?.toLowerCase() === 'superadmin' ? 'SUPERADMIN' : minRoleUpper;
   
-  // SUPERADMIN/ECI always passes
-  if (mappedUserRole === 'SUPERADMIN' || mappedUserRole === 'ECI') {
+  const mappedUserRole = roleMappings[normalizedUserRole] || normalizedUserRole;
+  const mappedMinRole = roleMappings[normalizedMinRole] || normalizedMinRole;
+  
+  // SUPERADMIN/ECI always passes (check both uppercase and lowercase)
+  if (mappedUserRole === 'SUPERADMIN' || mappedUserRole === 'ECI' || 
+      userRole?.toLowerCase() === 'superadmin' || userRole?.toLowerCase() === 'eci') {
     return true;
   }
   
@@ -209,6 +216,7 @@ function requireRole(...allowedRoles) {
       // Also check legacy role mappings
       const roleMappings = {
         'ECI': 'SUPERADMIN',
+        'SUPERADMIN': 'SUPERADMIN',
         'CEO': 'CEO',
         'DEO': 'DEO',
         'ERO': 'ERO',
