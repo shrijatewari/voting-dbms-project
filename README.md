@@ -14,6 +14,15 @@ A **government-grade, production-ready** Election Management System with AI-powe
 
   <img width="1280" height="764" alt="image" src="https://github.com/user-attachments/assets/01772d2e-6437-406f-9cc2-a2bcd79e3893" />
 
+  <img width="1280" height="760" alt="image" src="https://github.com/user-attachments/assets/bd10bc12-0b09-404c-b4de-3136ce7453c1" />
+
+  <img width="1280" height="845" alt="image" src="https://github.com/user-attachments/assets/540cc57c-4746-4caf-a523-cd57f515601e" />
+
+  <img width="1280" height="770" alt="image" src="https://github.com/user-attachments/assets/cd5ac10b-821a-478b-8ac7-465d1073acb2" />
+
+
+
+
 
 ### Advanced Features
 - ✅ **AI-Powered Duplicate Detection** (6 AI microservices)
@@ -24,6 +33,15 @@ A **government-grade, production-ready** Election Management System with AI-powe
 - ✅ **Transparency Portal** with Merkle root verification
 - ✅ **Audit Logs** with hash-chained immutability
 - ✅ **Multilingual Support** (10 languages)
+
+  <img width="1280" height="770" alt="image" src="https://github.com/user-attachments/assets/f7b5e57f-1f3f-4332-adf1-d52c35e736b6" />
+
+  <img width="1280" height="766" alt="image" src="https://github.com/user-attachments/assets/798e8d23-b483-4f52-9953-f15521bdea05" />
+
+  <img width="992" height="1062" alt="image" src="https://github.com/user-attachments/assets/5e17ceca-fad1-458f-bc5d-50ffebbd7bb0" />
+
+
+
 
 ### Security Features
 - ✅ **AES-256 Encryption** for sensitive data
