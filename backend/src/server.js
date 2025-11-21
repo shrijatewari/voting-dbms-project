@@ -191,12 +191,37 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Root route - API info
+app.get('/', (req, res) => {
+  res.json({
+    message: 'SecureVote Election Management System API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      api: '/api',
+      docs: '/api-docs',
+      health: '/api/health'
+    },
+    note: 'This is the backend API server. Frontend should be accessed separately.'
+  });
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Route not found',
     message: `The requested route ${req.method} ${req.originalUrl} was not found on this server.`,
-    availableEndpoints: '/api'
+    availableEndpoints: '/api',
+    docs: '/api-docs'
   });
 });
 
