@@ -81,7 +81,7 @@ export default function AiNoticeComposer({ onNoticeGenerated }: AiNoticeComposer
           <select
             value={noticeType}
             onChange={(e) => setNoticeType(e.target.value)}
-            className="input-field"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {noticeTypes.map(type => (
               <option key={type.value} value={type.value}>{type.label}</option>
@@ -94,7 +94,7 @@ export default function AiNoticeComposer({ onNoticeGenerated }: AiNoticeComposer
           <select
             value={lang}
             onChange={(e) => setLang(e.target.value)}
-            className="input-field"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {languages.map(lang => (
               <option key={lang.code} value={lang.code}>{lang.name}</option>
@@ -107,7 +107,7 @@ export default function AiNoticeComposer({ onNoticeGenerated }: AiNoticeComposer
           <select
             value={audience}
             onChange={(e) => setAudience(e.target.value)}
-            className="input-field"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="citizens">Citizens</option>
             <option value="officials">Election Officials</option>
@@ -123,7 +123,7 @@ export default function AiNoticeComposer({ onNoticeGenerated }: AiNoticeComposer
                 type="text"
                 value={point}
                 onChange={(e) => handleKeyPointChange(index, e.target.value)}
-                className="input-field flex-1"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder={`Key point ${index + 1}`}
               />
               {keyPoints.length > 1 && (
@@ -146,7 +146,7 @@ export default function AiNoticeComposer({ onNoticeGenerated }: AiNoticeComposer
 
         <button
           onClick={handleGenerate}
-          className="btn-primary w-full"
+          className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={keyPoints.filter(kp => kp.trim().length > 0).length === 0}
         >
           🤖 Generate Notice with AI

@@ -99,7 +99,7 @@ export default function AiModal({ endpoint, payload, onClose, onResult }: AiModa
           {!result && !loading && (
             <button
               onClick={handleAskAI}
-              className="w-full btn-primary py-3"
+              className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
             >
               Ask AI
             </button>
@@ -182,19 +182,19 @@ export default function AiModal({ endpoint, payload, onClose, onResult }: AiModa
               <div className="flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 btn-secondary text-sm py-2"
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm font-medium"
                 >
                   📋 Copy
                 </button>
                 <button
                   onClick={handleDownload}
-                  className="flex-1 btn-secondary text-sm py-2"
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm font-medium"
                 >
                   💾 Download
                 </button>
                 <button
                   onClick={handleAskAI}
-                  className="flex-1 btn-primary text-sm py-2"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                 >
                   🔄 Retry
                 </button>
